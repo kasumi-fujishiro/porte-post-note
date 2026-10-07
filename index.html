@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>投稿ノート</title>
+<meta name="theme-color" content="#EDF1E8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151A16" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="投稿ノート">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>投稿ノート</h1>
+    <nav class="tabs" aria-label="画面の切りかえ">
+      <a href="#make" id="nav-make">つくる</a><a href="#book" id="nav-book">登録</a><a href="#log" id="nav-log">記録</a>
+    </nav>
+  </header>
+
+  <div class="warn" id="inapp" hidden>
+    LINEなどのアプリの中で開いています。この画面では、画像の保存や共有がうまく動かないことがあります。
+    右上(または右下)の「…」から「ブラウザで開く」をえらんで、SafariかChromeで開いてください。
+  </div>
+
+  <div class="notice" id="notice" role="status" hidden>
+    <span class="pill" id="noticeTag" hidden></span>
+    <p id="noticeText"></p>
+    <div class="row">
+      <button type="button" class="primary" id="noticeGo">営業日を確認する</button>
+      <button type="button" id="noticeDone" hidden>投稿まで済んだ</button>
+    </div>
+  </div>
+
+  <!-- ===== つくる ===== -->
+  <main class="grid" id="tab-make">
+    <section aria-labelledby="h-kind">
+      <h2 id="h-kind">1. どの投稿ですか</h2>
+      <div class="kinds" id="kinds" role="radiogroup" aria-labelledby="h-kind">
+        <label><input type="radio" name="kind" id="kind-open" value="open" checked><b>営業中</b><small>ショーケースの写真で、今日も開いていることを知らせる</small></label>
+        <label><input type="radio" name="kind" id="kind-new" value="new"><b>新作・季節</b><small>登録してある商品をえらぶ</small></label>
+        <label><input type="radio" name="kind" id="kind-park" value="park"><b>駐車場</b><small>決まった案内を出す</small></label>
+        <label><input type="radio" name="kind" id="kind-cal" value="cal"><b>営業カレンダー</b><small>月の営業日を知らせる</small></label>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-fields">
+      <h2 id="h-fields">2. 写真とことば</h2>
+      <div class="stack" id="photoBox">
+        <label class="check" id="parkPhotoWrap" hidden><input type="checkbox" id="parkPhoto"> 写真を入れる</label>
+        <div class="row" id="photoCtl">
+          <span class="filebtn">写真をえらぶ<input type="file" id="photoFile" accept="image/*" aria-label="写真をえらぶ"></span>
+          <span class="filebtn">その場で撮る<input type="file" id="photoCam" accept="image/*" capture="environment" aria-label="その場で撮る"></span>
+          <span class="hint" id="photoState" aria-live="polite">まだ写真がありません。</span>
+        </div>
+        <div class="field" id="photoPosWrap" hidden><label for="photoPos">写真の上下の位置</label><input type="range" id="photoPos" min="0" max="100" value="50"></div>
+      </div>
+
+      <div class="stack" id="fs-open">
+        <div class="row">
+          <div class="field grow"><label for="f-date">日付</label><input type="date" id="f-date"></div>
+          <div class="field grow"><span id="l-pos">日付とOPENの位置</span>
+            <div class="seg" role="radiogroup" aria-labelledby="l-pos">
+              <label><input type="radio" name="pos" id="pos-top" value="top" checked>上</label><label><input type="radio" name="pos" id="pos-bottom" value="bottom">下</label>
+            </div>
+          </div>
+        </div>
+        <div class="field"><span id="l-cat">ひとこと(えらばなくてもかまいません)</span>
+          <div class="chips" id="catChips" role="radiogroup" aria-labelledby="l-cat"></div>
+          <div class="chips words" id="phraseChips" role="radiogroup" aria-label="ひとこと"></div>
+        </div>
+        <div class="row"><button type="button" class="small" id="phraseCopy">えらんだ ひとことをコピー(動画に貼るとき)</button><span class="status" id="s-phrase" aria-live="polite"></span></div>
+      </div>
+
+      <div class="stack" id="fs-new" hidden>
+        <div class="field"><label for="f-product">商品</label><select id="f-product"></select></div>
+        <div class="field"><label for="f-badge">ラベル</label>
+          <select id="f-badge"><option>NEW</option><option>季節限定</option><option>本日のおすすめ</option><option value="">なし</option></select></div>
+      </div>
+
+      <div class="stack" id="fs-park" hidden>
+        <p class="hint">案内の文は、下の「お店の設定(仮)」で決めたものが入ります。</p>
+      </div>
+
+      <div class="stack" id="fs-cal" hidden>
+        <div class="row">
+          <div class="field grow"><label for="cal-y">年</label><select id="cal-y"></select></div>
+          <div class="field grow"><label for="cal-m">月</label><select id="cal-m"></select></div>
+        </div>
+        <div class="field"><span id="l-grid">定休日はあらかじめ入っています。変わる日だけタップしてください(1回で「お休み」、2回で「時間変更」、3回で「営業」)。</span>
+          <div class="calgrid" id="calgrid" role="group" aria-labelledby="l-grid"></div>
+          <div class="legend"><span><i class="lg c"></i>お休み</span><span><i class="lg s"></i>時間変更</span><span><i class="lg"></i>営業</span></div>
+        </div>
+        <div class="row"><button type="button" class="small" id="calReset">定休日どおりに戻す</button><span class="status" id="s-cal" aria-live="polite"></span></div>
+        <div class="field"><label for="f-calnote">ひとこと</label><input type="text" id="f-calnote" placeholder="例:23日は営業します"></div>
+
+        <div class="okbox" id="calOkBox">
+          <p id="calOkText"></p>
+          <button type="button" class="primary" id="calOk">この内容でOK</button>
+          <div class="future" id="calFuture" hidden>
+            <span class="pill">これから作る部分</span>
+            <p>ここから先(決めた日に自動で投稿する)は、これから作る部分です。</p>
+            <p class="hint">今は、「3. できあがり」から画像を保存して、Instagramのアプリで予約投稿してください。</p>
+            <button type="button" id="calDone">投稿まで済んだ</button>
+          </div>
+        </div>
+
+        <div class="testbox">
+          <div class="row"><button type="button" id="noticeTest">お知らせの表示を試す</button></div>
+          <div class="seg" id="simModes" role="radiogroup" aria-label="試す日" hidden>
+            <label><input type="radio" name="sim" value="due" checked>知らせる時期</label>
+            <label><input type="radio" name="sim" value="late">出す日を過ぎた</label>
+          </div>
+          <p class="status" id="simStatus" aria-live="polite"></p>
+          <p class="hint">定休日、出す日、何日前から知らせるかは、下の「お店の設定(仮)」で変えられます。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="preview" aria-labelledby="h-prev">
+      <h2 id="h-prev">3. できあがり</h2>
+      <div class="seg" id="fmts" role="radiogroup" aria-label="大きさ">
+        <label><input type="radio" name="fmt" id="fmt-story" value="story" checked>ストーリーズ</label>
+        <label><input type="radio" name="fmt" id="fmt-feed" value="feed">フィード投稿</label>
+        <label><input type="radio" name="fmt" id="fmt-a4" value="a4">店頭掲示 A4</label>
+      </div>
+      <div class="stage"><canvas id="cv" width="1080" height="1920" aria-label="できあがった画像のプレビュー"></canvas></div>
+      <div class="row center">
+        <button type="button" class="primary big" id="shareBtn" hidden>共有する(Instagramへ)</button>
+        <button type="button" class="big" id="saveBtn">画像を保存する</button>
+      </div>
+      <p class="status center" id="status" aria-live="polite"></p>
+      <div class="row center">
+        <button type="button" class="small" id="fallbackBtn">うまく保存できないとき</button>
+        <button type="button" class="small" id="newBtn">新しい投稿を作る</button>
+      </div>
+      <div class="fallback" id="fallback" hidden>
+        <p class="hint">下の画像を長押し(パソコンは右クリック)して保存してください。</p>
+        <img id="fallbackImg" alt="保存用の画像">
+      </div>
+    </section>
+
+    <details class="box" id="settingsBox">
+      <summary>お店の設定(仮)</summary>
+      <p class="hint">今夜の試作のための、仮の設定です。この端末にだけ保存されます。あとで「登録」の画面に移します。</p>
+      <div class="stack" id="settingsForm">
+        <div class="field"><label for="set-hours">営業時間(入れると、営業中とカレンダーに出ます)</label><input type="text" id="set-hours" placeholder="例:10:00 – 18:00"></div>
+        <div class="field"><label for="set-theme">営業中と、カレンダーの色</label><select id="set-theme"></select></div>
+        <div class="field"><label for="set-park">駐車場の案内(1行に1つ)</label><textarea id="set-park" rows="3"></textarea></div>
+        <div class="field"><span id="l-reg">定休日</span><div class="checks" id="regular" role="group" aria-labelledby="l-reg"></div></div>
+        <div class="field"><span id="l-calset">営業カレンダーのお知らせ</span>
+          <div class="inline" role="group" aria-labelledby="l-calset">
+            <select id="set-caltarget" aria-label="どの月の分を出すか"><option value="next">翌月の分を</option><option value="same">その月の分を</option></select>
+            <span>毎月</span><select id="set-calday" aria-label="カレンダーを出す日"></select><span>日に出す。</span>
+            <select id="set-callead" aria-label="何日前から知らせるか"></select><span>日前から、いちばん上に知らせる。</span>
+          </div>
+        </div>
+        <div class="row"><button type="button" class="small" id="settingsReset">設定を最初に戻す</button></div>
+      </div>
+    </details>
+  </main>
+
+  <!-- ===== 登録・記録(これから作る) ===== -->
+  <main class="grid" id="tab-book" hidden>
+    <section class="stack">
+      <h2>登録</h2>
+      <p>ひとこと集、商品メモ、お店の設定を登録する画面は、これから作ります。</p>
+      <p class="hint">今は、例として入れたひとことと商品が出ています。お店の設定は「つくる」の画面のいちばん下で、仮に変えられます。</p>
+    </section>
+  </main>
+  <main class="grid" id="tab-log" hidden>
+    <section class="stack">
+      <h2>記録</h2>
+      <p>作業時間の記録は、これから作ります。</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

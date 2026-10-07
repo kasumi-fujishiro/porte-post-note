@@ -1,0 +1,10 @@
+{
+  "name": "投稿ノート",
+  "short_name": "投稿ノート",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDF1E8",
+  "theme_color": "#EDF1E8",
+  "lang": "ja"
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>投稿ノートのテスト</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&display=swap">
+<style>
+  :root { color-scheme: light dark; --ok: #2F6B45; --bad: #B32D45; }
+  body { margin: 0; padding: 16px; font-family: "Hiragino Maru Gothic ProN", sans-serif; line-height: 1.7; background: Canvas; color: CanvasText; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  #sum { font-weight: 700; margin-bottom: 12px; }
+  li { margin-bottom: 4px; list-style: none; }
+  .ok::before { content: "○ "; color: var(--ok); font-weight: 700; }
+  .bad::before { content: "× "; color: var(--bad); font-weight: 700; }
+  .err { color: var(--bad); font-size: 14px; }
+  ul { padding: 0; }
+</style>
+</head>
+<body>
+<h1>投稿ノートの自動テスト</h1>
+<p id="sum">動かしています…</p>
+<ul id="list"></ul>
+<script type="module">
+import { run } from './cases.js';
+import { layout } from '../js/text.js';
+import { F_HAND } from '../js/draw.js';
+import { FORMATS } from '../js/data.js';
+
+// 本物の書体と、画像と同じ幅で「足元にお気をつけてお越しください」を確かめる
+await document.fonts.load('58px "Yusei Magic"', '足元にお気をつけてお越しください').catch(() => {});
+const c = document.createElement('canvas').getContext('2d');
+const measure = (t, s) => { c.font = `${s}px ${F_HAND}`; return c.measureText(t).width; };
+const extra = Object.entries(FORMATS).map(([k, f]) => [`本物の書体で、${f.name}のとき、最後の1文字だけが次の行に落ちない`, eq => {
+  const u = f.w / 1080;
+  for (const maxW of [f.w - 2 * f.x * u, (f.w - 2 * f.x * u) * 0.6, (f.w - 2 * f.x * u) * 0.4]) {
+    const r = layout('足元にお気をつけてお越しください', { size: 58 * u, min: 44 * u, maxW, measure });
+    for (const l of r.lines) eq([...l].length >= 2, true, r.lines.join(' / '));
+  }
+}]);
+
+const results = run(extra), bad = results.filter(r => !r.ok).length;
+document.getElementById('sum').textContent = `${results.length}件中 ${results.length - bad}件 OK${bad ? `、${bad}件 まちがい` : ''}`;
+document.getElementById('list').innerHTML = results.map(r =>
+  `<li class="${r.ok ? 'ok' : 'bad'}">${r.name}${r.errors.map(e => `<div class="err">${e}</div>`).join('')}</li>`).join('');
+</script>
+</body>
+</html>
