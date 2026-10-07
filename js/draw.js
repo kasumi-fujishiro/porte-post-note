@@ -1,7 +1,7 @@
 // 画像を描く処理(試作版の drawOpen / drawNew / drawPark / drawCal / brush / ink / block を整理したもの)。
 // 画面の部品には触らず、渡された内容 s だけを見て描く。
-import { THEMES, SEASONS } from './data.js?v=5';
-import { WEEK, layout } from './text.js?v=5';
+import { THEMES, SEASONS } from './data.js?v=6';
+import { WEEK, layout } from './text.js?v=6';
 
 export const F_TITLE = '"Potta One","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
 export const F_HAND = '"Yusei Magic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
@@ -347,22 +347,17 @@ function drawNew(c, f, u, s) {
   if (p && p.desc) lines(c, p.desc, { size: 56 * u, min: 44 * u, maxW, cx, y: bottom, lh: 1.55, from: 'bottom', style: { stroke: T.d, sw: 0.24 } });
 }
 
+// 駐車場:お店で決めた画像(1200×1697)を使う。上下のオレンジの帯をのばして、大きさに合わせる
+const PARK = { w: 1200, h: 1697, top: 78, bottom: 79, bar: '#D6785F' };
 function drawPark(c, f, u, s) {
-  const W = f.w, H = f.h, T = theme(s.theme), cx = W / 2, maxW = W - 2 * f.x * u, withPhoto = s.parkPhoto && s.photo;
-  if (withPhoto) { cover(c, W, H, s.photo, s.photoPos); c.fillStyle = 'rgba(0,0,0,.36)'; c.fillRect(0, 0, W, H); }
-  else { c.fillStyle = CREAM; c.fillRect(0, 0, W, H); brush(c, -60 * u, 60 * u, W * 0.7, 150 * u, T.a, 41, 0.2); brush(c, W * 0.4, H - 220 * u, W * 0.7, 150 * u, T.a, 43, 0.2); }
-  const fs = 56 * u, lh = 1.75, m = measurer(c, F_HAND);
-  // 案内の行は、いちばん小さくなった行に大きさをそろえる
-  const size = Math.min(fs, ...s.parkLines.map(l => layout(l, { size: fs, min: 42 * u, maxW, measure: m }).size));
-  const wrapped = s.parkLines.flatMap(l => layout(l, { size, min: size, maxW, measure: m }).lines.map(t => ({ t, size })));
-  const total = 190 * u + 60 * u + 150 * u + 70 * u + wrapped.length * fs * lh;
-  let y = f.top * u + Math.max(0, (H - (f.top + f.bottom) * u - total) / 2);
-  c.fillStyle = T.a; c.beginPath(); c.arc(cx, y + 95 * u, 95 * u, 0, Math.PI * 2); c.fill(); ink(c, 'P', cx, y + 100 * u, 130 * u, F_TITLE); y += 250 * u;
-  const tSize = 96 * u, title = '駐車場のご案内';
-  ink(c, title, cx, y + tSize * 0.55, tSize, F_TITLE, withPhoto ? { shadow: T.a } : { color: T.d });
-  y += tSize * 1.2; c.font = `${tSize}px ${F_TITLE}`; const uw = Math.min(maxW, c.measureText(title).width); brush(c, cx - uw / 2, y, uw, 24 * u, T.a, 47); y += 94 * u;
-  if (!wrapped.length) ink(c, '案内の文を入れてください', cx, y + fs * lh / 2, 40 * u, F_HAND, withPhoto ? { stroke: T.d } : { color: T.d });
-  wrapped.forEach((l, i) => ink(c, l.t, cx, y + (i + 0.5) * fs * lh, l.size, F_HAND, withPhoto ? { stroke: T.d, sw: 0.24 } : { color: INK }));
+  const W = f.w, H = f.h, img = s.parkImage;
+  c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
+  if (!img) { ink(c, '駐車場の画像を読み込んでいます', W / 2, H / 2, 44 * u, F_HAND, { color: '#8A7566' }); return; }
+  // 帯をのぞいた中身を、はみ出さない大きさで真ん中に置く
+  const k = Math.min(W / PARK.w, H / PARK.h), ch = PARK.h - PARK.top - PARK.bottom;
+  const dw = PARK.w * k, dh = ch * k, dx = (W - dw) / 2, dy = (H - dh) / 2;
+  c.drawImage(img, 0, PARK.top, PARK.w, ch, dx, dy, dw, dh);
+  c.fillStyle = PARK.bar; c.fillRect(0, 0, W, Math.ceil(dy)); c.fillRect(0, Math.floor(dy + dh), W, H - Math.floor(dy + dh));
 }
 
 function drawCal(c, f, u, s) {

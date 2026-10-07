@@ -1,14 +1,13 @@
 // 画面の動き。データは今は端末の中だけ(段階3で Firestore につなぐ)。
-import { THEMES, FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=5';
-import { WEEK, iso, md, pad2, dateLabel } from './text.js?v=5';
-import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js?v=5';
-import { ls, photoStore } from './store.js?v=5';
-import { draw } from './draw.js?v=5';
+import { THEMES, FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=6';
+import { WEEK, iso, md, pad2, dateLabel } from './text.js?v=6';
+import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js?v=6';
+import { ls, photoStore } from './store.js?v=6';
+import { draw } from './draw.js?v=6';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-const splitLines = t => String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
 const radio = name => ($(`input[name=${name}]:checked`) || {}).value;
 const setRadio = (name, v) => { const el = $(`input[name=${name}][value="${v}"]`); if (el) el.checked = true; };
 const today = new Date(), todayIso = iso(today);
@@ -33,7 +32,6 @@ let curCat = draft.cat || '', curPhrase = draft.phrase || '';
 ['kind', 'fmt', 'pos'].forEach(n => { if (draft[n]) setRadio(n, draft[n]); });
 $('#f-date').value = draft.date || todayIso;
 if (draft.badge != null) $('#f-badge').value = draft.badge;
-$('#parkPhoto').checked = !!draft.parkPhoto;
 $('#photoPos').value = draft.photoPos ?? 50;
 
 const ySel = $('#cal-y'), mSel = $('#cal-m');
@@ -47,7 +45,7 @@ function saveDraft() {
   ls.set('pn-draft', {
     day: todayIso, kind: radio('kind'), fmt: radio('fmt'), pos: radio('pos'), date: $('#f-date').value,
     cat: curCat, phrase: curPhrase, product: $('#f-product').value, badge: $('#f-badge').value,
-    parkPhoto: $('#parkPhoto').checked, photoPos: +$('#photoPos').value, calY: +ySel.value, calM: +mSel.value,
+    photoPos: +$('#photoPos').value, calY: +ySel.value, calM: +mSel.value,
     t0, recorded
   });
 }
@@ -284,13 +282,12 @@ for (let d = 1; d <= 28; d++) $('#set-calday').add(new Option(d, d));
 function paintSettings() {
   const st = settings, act = document.activeElement;
   if ($('#set-hours') !== act) $('#set-hours').value = st.hours || '';
-  if ($('#set-park') !== act) $('#set-park').value = st.park || '';
   $('#set-theme').value = st.theme; $('#set-calday').value = st.calday; $('#set-callead').value = st.callead; $('#set-caltarget').value = st.caltarget;
   $$('#regular input').forEach(el => { el.checked = st.regular.includes(+el.value); });
 }
 function readSettings() {
   settings = {
-    hours: $('#set-hours').value.trim(), theme: $('#set-theme').value, park: $('#set-park').value,
+    hours: $('#set-hours').value.trim(), theme: $('#set-theme').value,
     regular: $$('#regular input:checked').map(el => +el.value),
     calday: +$('#set-calday').value, callead: +$('#set-callead').value, caltarget: $('#set-caltarget').value
   };
@@ -302,13 +299,17 @@ $('#settingsReset').addEventListener('click', () => { settings = { ...DEFAULT_SE
 
 // ---------- 画像を描く ----------
 const cv = $('#cv');
+// 駐車場は、お店で決めた画像を使う
+const parkImg = new Image();
+parkImg.onload = () => changed();
+parkImg.src = 'images/parking.jpg?v=6';
 function drawState() {
   const { y, m, key } = curYM();
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: settings.theme, hours: settings.hours,
     open: { date: dateLabel($('#f-date').value || todayIso), pos: radio('pos'), phrase: phraseText() },
     product: product(), badge: $('#f-badge').value,
-    parkLines: splitLines(settings.park), parkPhoto: $('#parkPhoto').checked,
+    parkImage: parkImg.complete && parkImg.naturalWidth ? parkImg : null,
     cal: { ...monthInfo(y, m), map: curMap(), note: (cal.notes[key] || '').trim() }
   };
 }
@@ -317,7 +318,7 @@ const seen = new Set();
 async function ensureFonts(s) {
   if (!document.fonts || !document.fonts.load) return false;
   const text = 'OPENNEW季節限定本日のおすすめ駐車場ご案内P月の営業日年お休み時間変更商品をえらんでください0123456789.:– ' + WEEK.join('')
-    + s.open.phrase + (s.product ? s.product.name + s.product.desc : '') + s.parkLines.join('') + s.hours + s.cal.note;
+    + s.open.phrase + (s.product ? s.product.name + s.product.desc : '') + s.hours + s.cal.note;
   const need = [...new Set(text)].filter(ch => !seen.has(ch));
   if (!need.length) return false;
   need.forEach(ch => seen.add(ch));
@@ -364,6 +365,7 @@ function ready() {
   const k = radio('kind');
   if ((k === 'open' || k === 'new') && !photo) { say('写真がないと保存できません。先に「写真をえらぶ」を押してください。', true); return false; }
   if (k === 'new' && !product()) { say('商品がまだ登録されていません。', true); return false; }
+  if (k === 'park' && !(parkImg.complete && parkImg.naturalWidth)) { say('駐車場の画像を読み込めていません。電波のある所で、ページを読み込み直してください。', true); return false; }
   return true;
 }
 $('#shareBtn').addEventListener('click', async () => {
@@ -407,10 +409,8 @@ $('#newBtn').addEventListener('click', () => {
 function syncKind() {
   const k = radio('kind');
   ['open', 'new', 'park', 'cal'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
-  $('#photoBox').hidden = k === 'cal';
-  $('#parkPhotoWrap').hidden = k !== 'park';
-  $('#photoCtl').hidden = k === 'park' && !$('#parkPhoto').checked;
-  $('#photoPosWrap').hidden = !photo || $('#photoCtl').hidden;
+  $('#photoBox').hidden = k === 'cal' || k === 'park';
+  $('#photoPosWrap').hidden = !photo;
 }
 function showTab() {
   const t = ['make', 'book', 'log'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'make';
@@ -423,7 +423,7 @@ function showTab() {
 addEventListener('hashchange', showTab);
 $('#kinds').addEventListener('change', () => { say(''); syncKind(); if (radio('kind') === 'cal') paintGrid(); saveDraft(); changed(); });
 $('#fmts').addEventListener('change', () => { saveDraft(); changed(); });
-['#f-date', '#photoPos', '#f-product', '#f-badge', '#parkPhoto'].forEach(sel => $(sel).addEventListener('input', () => { syncKind(); saveDraft(); changed(); }));
+['#f-date', '#photoPos', '#f-product', '#f-badge'].forEach(sel => $(sel).addEventListener('input', () => { syncKind(); saveDraft(); changed(); }));
 $$('input[name=pos]').forEach(el => el.addEventListener('change', () => { saveDraft(); changed(); }));
 
 // 内容に触ったら、時間を計りはじめる(お店の設定は数えない)

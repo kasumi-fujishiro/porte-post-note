@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=5">
-<script type="module" src="js/app.js?v=5"></script>
+<link rel="stylesheet" href="css/style.css?v=6">
+<script type="module" src="js/app.js?v=6"></script>
 </head>
 <body>
 <div class="app">
@@ -45,7 +45,7 @@
       <div class="kinds" id="kinds" role="radiogroup" aria-labelledby="h-kind">
         <label><input type="radio" name="kind" id="kind-open" value="open" checked><b>営業中</b><small>ショーケースの写真で、今日も開いていることを知らせる</small></label>
         <label><input type="radio" name="kind" id="kind-new" value="new"><b>新作・季節</b><small>登録してある商品をえらぶ</small></label>
-        <label><input type="radio" name="kind" id="kind-park" value="park"><b>駐車場</b><small>決まった案内を出す</small></label>
+        <label><input type="radio" name="kind" id="kind-park" value="park"><b>駐車場</b><small>お店で決めた案内の画像を出す</small></label>
         <label><input type="radio" name="kind" id="kind-cal" value="cal"><b>営業カレンダー</b><small>月の営業日を知らせる</small></label>
       </div>
     </section>
@@ -53,7 +53,6 @@
     <section aria-labelledby="h-fields">
       <h2 id="h-fields">2. 写真とことば</h2>
       <div class="stack" id="photoBox">
-        <label class="check" id="parkPhotoWrap" hidden><input type="checkbox" id="parkPhoto"> 写真を入れる</label>
         <div class="row" id="photoCtl">
           <span class="filebtn">写真をえらぶ<input type="file" id="photoFile" accept="image/*" aria-label="写真をえらぶ"></span>
           <span class="filebtn">その場で撮る<input type="file" id="photoCam" accept="image/*" capture="environment" aria-label="その場で撮る"></span>
@@ -85,7 +84,7 @@
       </div>
 
       <div class="stack" id="fs-park" hidden>
-        <p class="hint">案内の文は、下の「お店の設定(仮)」で決めたものが入ります。</p>
+        <p class="hint">お店で決めた駐車場の案内の画像が、そのまま入ります。大きさをえらんで、保存か共有をしてください。</p>
       </div>
 
       <div class="stack" id="fs-cal" hidden>
@@ -153,7 +152,6 @@
       <div class="stack" id="settingsForm">
         <div class="field"><label for="set-hours">営業時間(入れると、営業中とカレンダーに出ます)</label><input type="text" id="set-hours" placeholder="例:10:00 – 18:00"></div>
         <div class="field"><label for="set-theme">営業中の色(カレンダーは月ごとの季節の色になります)</label><select id="set-theme"></select></div>
-        <div class="field"><label for="set-park">駐車場の案内(1行に1つ)</label><textarea id="set-park" rows="3"></textarea></div>
         <div class="field"><span id="l-reg">定休日</span><div class="checks" id="regular" role="group" aria-labelledby="l-reg"></div></div>
         <div class="field"><span id="l-calset">営業カレンダーのお知らせ</span>
           <div class="inline" role="group" aria-labelledby="l-calset">

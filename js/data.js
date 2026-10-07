@@ -40,7 +40,6 @@ export const PRODUCTS = [
 export const DEFAULT_SETTINGS = {
   hours: '',
   theme: 'pink',
-  park: '例:お店の前に ◯台 とめられます\n例:満車のときは、近くの駐車場をご利用ください',
   regular: [1, 2],
   calday: 25,
   callead: 5,
