@@ -1,9 +1,9 @@
 // 画面の動き。データは今は端末の中だけ(段階3で Firestore につなぐ)。
-import { THEMES, FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=2';
-import { WEEK, iso, md, pad2, dateLabel } from './text.js?v=2';
-import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js?v=2';
-import { ls, photoStore } from './store.js?v=2';
-import { draw } from './draw.js?v=2';
+import { THEMES, FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=5';
+import { WEEK, iso, md, pad2, dateLabel } from './text.js?v=5';
+import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js?v=5';
+import { ls, photoStore } from './store.js?v=5';
+import { draw } from './draw.js?v=5';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];

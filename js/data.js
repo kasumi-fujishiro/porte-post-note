@@ -47,19 +47,19 @@ export const DEFAULT_SETTINGS = {
   caltarget: 'next'
 };
 
-// 営業カレンダーの季節の飾り(月ごと)。band: 帯の色、motifs: 飾りの形、colors: 飾りの色
-// 飾りは順番に使いまわす。お休みの丸の色は THEMES のまま(読みやすさのため)
+// 営業カレンダーの季節のデザイン(月ごと)
+// main: お休みの丸と下線の色(白い数字が読める濃さ)、band: 帯の色、motifs: すみに置く飾り(右上と左下に3つずつ)
 export const SEASONS = {
-  1: { name: '梅', band: '#E58E9E', motifs: ['plum'], colors: ['#D9465F', '#EE9AAA'] },
-  2: { name: 'ハート', band: '#E38AA5', motifs: ['heart'], colors: ['#D94A6E', '#F0A0B8'] },
-  3: { name: '菜の花', band: '#D9BE3A', motifs: ['flower4'], colors: ['#E8C21F', '#9CC25A'] },
-  4: { name: '桜', band: '#F0A6BC', motifs: ['sakura'], colors: ['#EE8FAD', '#F7C2D2'] },
-  5: { name: '若葉', band: '#8FC25E', motifs: ['leaf'], colors: ['#5E9E32', '#9DCB6B'] },
-  6: { name: 'あじさい', band: '#8D9FD8', motifs: ['flower4'], colors: ['#7083CC', '#A88FD4'] },
-  7: { name: '星', band: '#6B95D3', motifs: ['star'], colors: ['#EDBB2E', '#6B95D3'] },
-  8: { name: 'ひまわり', band: '#EEB238', motifs: ['sunflower'], colors: ['#F0AE24', '#E9A21E'] },
-  9: { name: 'お月見', band: '#CFA54E', motifs: ['moon', 'star'], colors: ['#E6B937', '#D9A93A'] },
-  10: { name: '紅葉', band: '#DE7F36', motifs: ['maple'], colors: ['#D6532A', '#E99A2E'] },
-  11: { name: 'どんぐり', band: '#B3773F', motifs: ['acorn', 'leaf'], colors: ['#8A5A36', '#D38A3A'] },
-  12: { name: '雪', band: '#86AACB', motifs: ['snow', 'snow', 'star'], colors: ['#6F9CC2', '#9EBEDA', '#E0B84A'] }
+  1: { name: '梅', main: '#C2405A', band: '#E58E9E', motifs: ['plum', 'plumPink', 'plum'] },
+  2: { name: 'チョコ', main: '#7A4A2E', band: '#D9A3B5', motifs: ['chocoHeart', 'chocoBar', 'heart'] },
+  3: { name: '菜の花', main: '#5E8F2A', band: '#E3C83A', motifs: ['nanohana', 'leafLight', 'nanohana'] },
+  4: { name: '桜', main: '#D45C84', band: '#F0A6BC', motifs: ['sakura', 'sakuraLight', 'sakura'] },
+  5: { name: 'こどもの日', main: '#3567A8', band: '#8DB7E3', motifs: ['koinobori', 'kabuto', 'leafLight'] },
+  6: { name: 'あじさい', main: '#5A6BBF', band: '#9AA9DE', motifs: ['hydrangea', 'drop', 'hydrangeaPurple'] },
+  7: { name: '七夕', main: '#35609E', band: '#7FA4DA', motifs: ['milkyWay', 'sasa', 'star'] },
+  8: { name: 'ひまわり', main: '#C26F0A', band: '#F0BE4A', motifs: ['sunflower', 'sunflower', 'leaf'] },
+  9: { name: 'お月見', main: '#3E4F7A', band: '#D8BC6A', motifs: ['tsukimiDango', 'moon', 'susuki'] },
+  10: { name: 'ハロウィン', main: '#D2601A', band: '#A386CF', motifs: ['pumpkin', 'bat', 'candy'] },
+  11: { name: '紅葉', main: '#B8432A', band: '#E39A4A', motifs: ['maple', 'mapleYellow', 'maple'] },
+  12: { name: 'クリスマス', main: '#B3303A', band: '#6FA87A', motifs: ['tree', 'ornament', 'snow'] }
 };
