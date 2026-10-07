@@ -1,9 +1,9 @@
 // 画面の動き。データは今は端末の中だけ(段階3で Firestore につなぐ)。
-import { THEMES, FORMATS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js';
-import { WEEK, iso, md, pad2, dateLabel } from './text.js';
-import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js';
-import { ls, photoStore } from './store.js';
-import { draw } from './draw.js';
+import { THEMES, FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=2';
+import { WEEK, iso, md, pad2, dateLabel } from './text.js?v=2';
+import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js?v=2';
+import { ls, photoStore } from './store.js?v=2';
+import { draw } from './draw.js?v=2';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -47,9 +47,67 @@ function saveDraft() {
   ls.set('pn-draft', {
     day: todayIso, kind: radio('kind'), fmt: radio('fmt'), pos: radio('pos'), date: $('#f-date').value,
     cat: curCat, phrase: curPhrase, product: $('#f-product').value, badge: $('#f-badge').value,
-    parkPhoto: $('#parkPhoto').checked, photoPos: +$('#photoPos').value, calY: +ySel.value, calM: +mSel.value
+    parkPhoto: $('#parkPhoto').checked, photoPos: +$('#photoPos').value, calY: +ySel.value, calM: +mSel.value,
+    t0, recorded
   });
 }
+
+// ---------- 作業時間(触りはじめてから、保存か共有まで) ----------
+let t0 = draft.t0 || 0, recorded = !!draft.recorded, tick = 0;
+const LOG_MAX = 200;
+const fmtSec = sec => `${Math.floor(sec / 60)}:${pad2(sec % 60)}`;
+const elapsed = () => (t0 ? Math.max(1, Math.round((Date.now() - t0) / 1000)) : 0);
+function showTimer(note = '') {
+  const el = $('#timer'); el.textContent = `作業時間 ${fmtSec(elapsed())}${note}`; el.classList.toggle('on', !!t0 && !recorded);
+}
+function startTick() { clearInterval(tick); if (t0 && !recorded) tick = setInterval(showTimer, 1000); }
+function touch() {
+  if (t0 || recorded) return;
+  t0 = Date.now(); saveDraft(); showTimer(); startTick();
+}
+// 保存か共有ができたときに1回だけ記録する
+function record() {
+  if (!t0 || recorded) return;
+  const sec = elapsed(), d = new Date();
+  recorded = true; clearInterval(tick);
+  const log = ls.get('pn-log', []);
+  log.unshift({ at: `${iso(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`, kind: KINDS[radio('kind')], fmt: FORMATS[radio('fmt')].name, sec });
+  ls.set('pn-log', log.slice(0, LOG_MAX)); saveDraft();
+  $('#timer').textContent = `作業時間 ${fmtSec(sec)}(記録しました)`; $('#timer').classList.remove('on');
+  paintLog();
+}
+function resetTimer() { t0 = 0; recorded = false; clearInterval(tick); showTimer(); }
+
+// ---------- 記録の画面 ----------
+function paintLog() {
+  const log = ls.get('pn-log', []), tb = $('#logTable tbody'); tb.textContent = '';
+  for (const r of log.slice(0, 50)) {
+    const tr = document.createElement('tr');
+    for (const v of [r.at, r.kind, r.fmt, r.sec]) { const td = document.createElement('td'); td.textContent = v; tr.append(td); }
+    tb.append(tr);
+  }
+  $('#logEmpty').hidden = log.length > 0; $('#logTable').hidden = log.length === 0;
+  $('#logAvg').textContent = log.length ? `${log.length}回の平均は ${Math.round(log.reduce((a, r) => a + r.sec, 0) / log.length)}秒 です。` : '';
+}
+$('#logCopy').addEventListener('click', async () => {
+  const log = ls.get('pn-log', []);
+  if (!log.length) { $('#s-log').textContent = 'まだ記録がありません。'; return; }
+  const tsv = ['日時\t種類\t大きさ\t秒', ...log.map(r => [r.at, r.kind, r.fmt, r.sec].join('\t'))].join('\n');
+  try { await navigator.clipboard.writeText(tsv); $('#s-log').textContent = 'コピーしました。表計算ソフトに貼り付けられます。'; }
+  catch { $('#s-log').textContent = 'コピーできませんでした。'; }
+});
+// まちがって消さないように、2回押したときだけ消す
+let clearArmed = 0;
+$('#logClear').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if (!clearArmed) {
+    b.textContent = 'もう一度押すと消えます'; $('#s-log').textContent = '消した記録は戻せません。';
+    clearArmed = setTimeout(() => { clearArmed = 0; b.textContent = '記録を消す'; $('#s-log').textContent = ''; }, 4000);
+    return;
+  }
+  clearTimeout(clearArmed); clearArmed = 0; b.textContent = '記録を消す';
+  ls.del('pn-log'); paintLog(); $('#s-log').textContent = '記録を消しました。';
+});
 
 // ---------- 知らせる文 ----------
 function say(msg, err) { const s = $('#status'); s.textContent = msg || ''; s.classList.toggle('err', !!err); }
@@ -312,7 +370,7 @@ $('#shareBtn').addEventListener('click', async () => {
   if (!ready()) return;
   let file = cached && cached.v === version ? cached.file : null;
   if (!file) { render(); file = makeFile(await toBlob()); }
-  try { await navigator.share({ files: [file] }); say('共有の画面から渡しました。'); }
+  try { await navigator.share({ files: [file] }); record(); say('共有の画面から渡しました。'); }
   catch (e) {
     if (e && e.name === 'AbortError') say('共有をやめました。');
     else say('共有できませんでした。「画像を保存する」を押して、保存してから投稿してください。', true);
@@ -325,7 +383,7 @@ $('#saveBtn').addEventListener('click', async e => {
     render();
     const blob = await toBlob(), url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url; a.download = fileName(); document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    setTimeout(() => URL.revokeObjectURL(url), 60000); record();
     say(canShare ? '保存しました。写真のアプリに入れたいときは「共有する」から「画像を保存」をえらんでください。' : '保存しました。');
   } catch {
     say('保存できませんでした。「うまく保存できないとき」を押してください。', true);
@@ -340,7 +398,7 @@ $('#fallbackBtn').addEventListener('click', async () => {
 });
 $('#newBtn').addEventListener('click', () => {
   photoStore.del(); setPhoto(null);
-  curPhrase = ''; $('#f-date').value = todayIso; $('#photoPos').value = 50; $('#s-phrase').textContent = '';
+  resetTimer(); curPhrase = ''; $('#f-date').value = todayIso; $('#photoPos').value = 50; $('#s-phrase').textContent = '';
   $('#fallback').hidden = true; paintPhrases(); saveDraft(); changed();
   say('新しい投稿にしました。');
 });
@@ -368,5 +426,9 @@ $('#fmts').addEventListener('change', () => { saveDraft(); changed(); });
 ['#f-date', '#photoPos', '#f-product', '#f-badge', '#parkPhoto'].forEach(sel => $(sel).addEventListener('input', () => { syncKind(); saveDraft(); changed(); }));
 $$('input[name=pos]').forEach(el => el.addEventListener('change', () => { saveDraft(); changed(); }));
 
-paintSettings(); paintPhrases(); paintGrid(); syncKind(); updateNotice(); showTab();
+// 内容に触ったら、時間を計りはじめる(お店の設定は数えない)
+['input', 'change'].forEach(ev => $('#tab-make').addEventListener(ev, e => { if (!e.target.closest('#settingsBox')) touch(); }));
+$('#calgrid').addEventListener('click', touch);
+
+paintSettings(); paintPhrases(); paintGrid(); syncKind(); updateNotice(); paintLog(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());

@@ -20,3 +20,7 @@ python3 -m http.server 8000
 - `js/store.js` 端末への保存 / `js/data.js` 仮のデータ
 - `tests/` 自動テスト
 - `prototype-post-note.html` 参考にした試作版 / `claude-code-prompt.md` 依頼の全体
+
+## 直したものを公開するとき
+
+ブラウザが古いファイルを覚えていて、新しい版と混ざらないように、ファイル名の後ろに版の番号(`?v=2`)をつけています。`js/` や `css/` を直したら、`index.html` と `js/*.js` の中の `?v=2` をすべて次の番号(`?v=3` など)に変えてから公開します。

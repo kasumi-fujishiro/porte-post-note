@@ -1,7 +1,7 @@
 // 画像を描く処理(試作版の drawOpen / drawNew / drawPark / drawCal / brush / ink / block を整理したもの)。
 // 画面の部品には触らず、渡された内容 s だけを見て描く。
-import { THEMES } from './data.js';
-import { WEEK, layout } from './text.js';
+import { THEMES, SEASONS } from './data.js?v=2';
+import { WEEK, layout } from './text.js?v=2';
 
 export const F_TITLE = '"Potta One","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
 export const F_HAND = '"Yusei Magic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
@@ -48,6 +48,94 @@ function heart(c, x, y, s, color) {
   c.bezierCurveTo(x - s * 0.9, y - s * 0.25, x - s * 0.35, y - s * 0.85, x, y - s * 0.3);
   c.bezierCurveTo(x + s * 0.35, y - s * 0.85, x + s * 0.9, y - s * 0.25, x, y + s * 0.35);
   c.stroke(); c.restore();
+}
+
+// ---------- 季節の飾り(営業カレンダー用)。x, y が中心、r が半径、a が傾き ----------
+function petals(c, x, y, r, n, a, color, rr = 0.42, dist = 0.52) {
+  c.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    const t = a + Math.PI * 2 * i / n;
+    c.beginPath(); c.arc(x + Math.cos(t) * r * dist, y + Math.sin(t) * r * dist, r * rr, 0, Math.PI * 2); c.fill();
+  }
+}
+function dot(c, x, y, r, color) { c.fillStyle = color; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+function starPath(c, x, y, r, n, inner, a) {
+  c.beginPath();
+  for (let i = 0; i < n * 2; i++) { const t = a - Math.PI / 2 + Math.PI * i / n, rr = i % 2 ? r * inner : r; c.lineTo(x + Math.cos(t) * rr, y + Math.sin(t) * rr); }
+  c.closePath();
+}
+const MOTIFS = {
+  plum(c, x, y, r, a, color) { petals(c, x, y, r, 5, a, color, 0.42, 0.5); dot(c, x, y, r * 0.22, '#F6D36B'); },
+  sakura(c, x, y, r, a, color) {
+    c.fillStyle = color;
+    for (let i = 0; i < 5; i++) {
+      const t = a + Math.PI * 2 * i / 5;
+      c.save(); c.translate(x, y); c.rotate(t);
+      c.beginPath(); c.ellipse(r * 0.5, 0, r * 0.5, r * 0.3, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = CREAM; c.beginPath(); c.moveTo(r * 1.04, 0); c.lineTo(r * 0.86, -r * 0.1); c.lineTo(r * 0.86, r * 0.1); c.closePath(); c.fill();
+      c.restore(); c.fillStyle = color;
+    }
+    dot(c, x, y, r * 0.16, '#FFFFFF');
+  },
+  flower4(c, x, y, r, a, color) { petals(c, x, y, r, 4, a, color, 0.4, 0.46); dot(c, x, y, r * 0.16, '#FFFFFF'); },
+  sunflower(c, x, y, r, a, color) {
+    c.fillStyle = color;
+    for (let i = 0; i < 12; i++) {
+      const t = a + Math.PI * 2 * i / 12;
+      c.beginPath(); c.ellipse(x + Math.cos(t) * r * 0.62, y + Math.sin(t) * r * 0.62, r * 0.36, r * 0.15, t, 0, Math.PI * 2); c.fill();
+    }
+    dot(c, x, y, r * 0.38, '#7A4A26');
+  },
+  heart(c, x, y, r, a, color) {
+    c.save(); c.translate(x, y); c.rotate(a * 0.4); c.fillStyle = color; c.beginPath();
+    c.moveTo(0, r * 0.7);
+    c.bezierCurveTo(-r * 1.3, -r * 0.1, -r * 0.55, -r * 1.05, 0, -r * 0.4);
+    c.bezierCurveTo(r * 0.55, -r * 1.05, r * 1.3, -r * 0.1, 0, r * 0.7);
+    c.fill(); c.restore();
+  },
+  leaf(c, x, y, r, a, color) {
+    c.save(); c.translate(x, y); c.rotate(a);
+    c.fillStyle = color; c.beginPath(); c.moveTo(0, r); c.quadraticCurveTo(-r * 0.9, 0, 0, -r); c.quadraticCurveTo(r * 0.9, 0, 0, r); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = r * 0.08; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, r * 0.95); c.lineTo(0, -r * 0.6); c.stroke();
+    c.restore();
+  },
+  star(c, x, y, r, a, color) { c.fillStyle = color; starPath(c, x, y, r, 5, 0.45, a * 0.3); c.fill(); },
+  maple(c, x, y, r, a, color) {
+    // 5つの葉先と、そのあいだの小さなギザギザ
+    c.fillStyle = color; c.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const t = a * 0.3 - Math.PI / 2 + Math.PI * 2 * i / 5, s = Math.PI * 2 / 5, cy = y - r * 0.08;
+      [[0, 1], [s * 0.2, 0.62], [s * 0.3, 0.74], [s * 0.5, 0.36], [s * 0.7, 0.74], [s * 0.8, 0.62]]
+        .forEach(([d, k]) => c.lineTo(x + Math.cos(t + d) * r * k, cy + Math.sin(t + d) * r * k));
+    }
+    c.closePath(); c.fill();
+    c.strokeStyle = color; c.lineWidth = r * 0.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y + r * 0.2); c.lineTo(x + r * 0.15, y + r * 1.05); c.stroke();
+  },
+  moon(c, x, y, r, a, color) { dot(c, x, y, r, color); dot(c, x + r * 0.45, y - r * 0.3, r * 0.85, CREAM); },
+  acorn(c, x, y, r, a, color) {
+    c.save(); c.translate(x, y); c.rotate(a * 0.4);
+    c.fillStyle = '#C9894A'; c.beginPath(); c.ellipse(0, r * 0.2, r * 0.55, r * 0.7, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = color; c.beginPath(); c.ellipse(0, -r * 0.22, r * 0.66, r * 0.36, 0, Math.PI, 0); c.lineTo(r * 0.66, -r * 0.18); c.lineTo(-r * 0.66, -r * 0.18); c.fill();
+    c.strokeStyle = color; c.lineWidth = r * 0.12; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, -r * 0.55); c.lineTo(r * 0.1, -r * 0.8); c.stroke();
+    c.restore();
+  },
+  snow(c, x, y, r, a, color) {
+    c.save(); c.translate(x, y); c.rotate(a * 0.3); c.strokeStyle = color; c.lineWidth = r * 0.13; c.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      c.rotate(Math.PI / 3); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -r);
+      c.moveTo(0, -r * 0.55); c.lineTo(-r * 0.25, -r * 0.8); c.moveTo(0, -r * 0.55); c.lineTo(r * 0.25, -r * 0.8); c.stroke();
+    }
+    c.restore();
+  }
+};
+// 右上と左下のすみに、3つずつ置く(1080幅のときの位置と大きさ。H は下からの距離)
+const SPOTS = [[-160, 120, 70], [-292, 70, 44], [-80, 232, 36], [150, -160, 70], [282, -100, 44], [62, -205, 30]];
+function seasonal(c, W, H, u, season) {
+  SPOTS.forEach(([sx, sy, sr], i) => {
+    const x = sx < 0 ? W + sx * u : sx * u, y = sy < 0 ? H + sy * u : sy * u;
+    const k = season.motifs[i % season.motifs.length], color = season.colors[i % season.colors.length];
+    c.save(); c.globalAlpha = 0.95; MOTIFS[k](c, x, y, sr * u, i * 0.7 - 0.5, color); c.restore();
+  });
 }
 
 // 写真を画像いっぱいに敷く。pos(0〜100)で上下の位置を決める
@@ -132,8 +220,11 @@ function drawPark(c, f, u, s) {
 
 function drawCal(c, f, u, s) {
   const W = f.w, H = f.h, T = theme(s.theme), cx = W / 2, x0 = f.x * u, w = W - 2 * x0, mi = s.cal, rows = Math.ceil((mi.first + mi.n) / 7);
+  // 帯と飾りは、その月の季節の色にする
+  const season = SEASONS[mi.m];
   c.fillStyle = CREAM; c.fillRect(0, 0, W, H);
-  brush(c, -80 * u, 50 * u, W * 0.6, 130 * u, T.a, 51, 0.18); brush(c, W * 0.5, H - 190 * u, W * 0.6, 130 * u, T.a, 53, 0.18);
+  brush(c, -80 * u, 50 * u, W * 0.6, 130 * u, season.band, 51, 0.28); brush(c, W * 0.5, H - 190 * u, W * 0.6, 130 * u, season.band, 53, 0.28);
+  seasonal(c, W, H, u, season);
   const st = Object.values(mi.map), legend = [st.includes('c') && ['c', 'お休み'], st.includes('s') && ['s', '時間変更']].filter(Boolean), note = mi.note;
   const titleH = 250 * u, head = 70 * u, tail = (legend.length ? 80 * u : 0) + (note ? 70 * u : 0) + (s.hours ? 70 * u : 0);
   const cell = Math.min(w / 7, (H - (f.top + f.bottom) * u - titleH - head - tail) / rows), total = titleH + head + rows * cell + tail;

@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css">
-<script type="module" src="js/app.js"></script>
+<link rel="stylesheet" href="css/style.css?v=2">
+<script type="module" src="js/app.js?v=2"></script>
 </head>
 <body>
 <div class="app">
@@ -135,6 +135,7 @@
         <button type="button" class="primary big" id="shareBtn" hidden>共有する(Instagramへ)</button>
         <button type="button" class="big" id="saveBtn">画像を保存する</button>
       </div>
+      <p class="timer center" id="timer">作業時間 0:00</p>
       <p class="status center" id="status" aria-live="polite"></p>
       <div class="row center">
         <button type="button" class="small" id="fallbackBtn">うまく保存できないとき</button>
@@ -176,8 +177,14 @@
   </main>
   <main class="grid" id="tab-log" hidden>
     <section class="stack">
-      <h2>記録</h2>
-      <p>作業時間の記録は、これから作ります。</p>
+      <h2>作業時間の記録</h2>
+      <p class="hint">「つくる」の画面で内容に触りはじめてから、保存か共有をするまでの時間です。今までのやり方で計った時間と比べるときに使います。</p>
+      <p class="hint">今は、この端末の分だけが残ります。全員の分を1か所に集めるしくみは、これから作ります。</p>
+      <p class="avg" id="logAvg"></p>
+      <div class="scroll"><table id="logTable"><thead><tr><th>日時</th><th>種類</th><th>大きさ</th><th>秒</th></tr></thead><tbody></tbody></table></div>
+      <p class="hint" id="logEmpty">まだ記録がありません。</p>
+      <div class="row"><button type="button" id="logCopy">表計算ソフトに貼れる形でコピー</button><button type="button" id="logClear">記録を消す</button></div>
+      <p class="status" id="s-log" aria-live="polite"></p>
     </section>
   </main>
 </div>

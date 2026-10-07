@@ -89,6 +89,14 @@ canvas { display: block; max-width: 100%; max-height: 62vh; width: auto; height:
 .fallback { display: grid; gap: 8px; justify-items: center; border-top: 1px dashed var(--line); padding-top: 12px; text-align: center; }
 .fallback img { max-height: 50vh; border-radius: 6px; }
 
+.timer { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--muted); }
+.timer.on { color: var(--ink); }
+.avg { font-weight: 900; font-size: 18px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 700; }
+
 /* お知らせ */
 .warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; font-weight: 700; margin-bottom: 14px; }
 .notice { display: grid; gap: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
