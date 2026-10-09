@@ -136,3 +136,7 @@ details.box[open] summary { margin-bottom: 8px; }
   #tab-make.grid > * { grid-column: 1; }
   #tab-make.grid > .preview { grid-column: 2; grid-row: 1 / span 3; position: sticky; top: 12px; }
 }
+
+/* 準備中の種類(えらべない) */
+.kinds label.soon { opacity: .6; cursor: default; border-style: dashed; }
+.kinds label.soon input { cursor: default; }

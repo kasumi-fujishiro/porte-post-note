@@ -1,1 +1,5 @@
 .DS_Store
+# clasp の設定(GASのプロジェクトIDが入る)。見本は gas/.clasp.json.example
+.clasp.json
+.clasprc.json
+node_modules/

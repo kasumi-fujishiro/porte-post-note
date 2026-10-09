@@ -12,30 +12,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=6">
-<script type="module" src="js/app.js?v=6"></script>
+<link rel="stylesheet" href="css/style.css?v=7">
+<script type="module" src="js/app.js?v=7"></script>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <h1>投稿ノート</h1>
     <nav class="tabs" aria-label="画面の切りかえ">
-      <a href="#make" id="nav-make">つくる</a><a href="#book" id="nav-book">登録</a><a href="#log" id="nav-log">記録</a>
+      <a href="#make" id="nav-make">つくる</a><a href="#shop" id="nav-shop">登録・確認(お店の人用)</a>
     </nav>
   </header>
 
   <div class="warn" id="inapp" hidden>
     LINEなどのアプリの中で開いています。この画面では、画像の保存や共有がうまく動かないことがあります。
     右上(または右下)の「…」から「ブラウザで開く」をえらんで、SafariかChromeで開いてください。
-  </div>
-
-  <div class="notice" id="notice" role="status" hidden>
-    <span class="pill" id="noticeTag" hidden></span>
-    <p id="noticeText"></p>
-    <div class="row">
-      <button type="button" class="primary" id="noticeGo">営業日を確認する</button>
-      <button type="button" id="noticeDone" hidden>投稿まで済んだ</button>
-    </div>
   </div>
 
   <!-- ===== つくる ===== -->
@@ -46,7 +37,7 @@
         <label><input type="radio" name="kind" id="kind-open" value="open" checked><b>営業中</b><small>ショーケースの写真で、今日も開いていることを知らせる</small></label>
         <label><input type="radio" name="kind" id="kind-new" value="new"><b>新作・季節</b><small>登録してある商品をえらぶ</small></label>
         <label><input type="radio" name="kind" id="kind-park" value="park"><b>駐車場</b><small>お店で決めた案内の画像を出す</small></label>
-        <label><input type="radio" name="kind" id="kind-cal" value="cal"><b>営業カレンダー</b><small>月の営業日を知らせる</small></label>
+        <label class="soon"><input type="radio" name="kind" id="kind-cal" value="cal" disabled><b>営業カレンダー(準備中)</b><small>確認ずみのカレンダーを、ここで保存できるようにします</small></label>
       </div>
     </section>
 
@@ -86,40 +77,6 @@
       <div class="stack" id="fs-park" hidden>
         <p class="hint">お店で決めた駐車場の案内の画像が、そのまま入ります。大きさをえらんで、保存か共有をしてください。</p>
       </div>
-
-      <div class="stack" id="fs-cal" hidden>
-        <div class="row">
-          <div class="field grow"><label for="cal-y">年</label><select id="cal-y"></select></div>
-          <div class="field grow"><label for="cal-m">月</label><select id="cal-m"></select></div>
-        </div>
-        <div class="field"><span id="l-grid">定休日はあらかじめ入っています。変わる日だけタップしてください(1回で「お休み」、2回で「時間変更」、3回で「営業」)。</span>
-          <div class="calgrid" id="calgrid" role="group" aria-labelledby="l-grid"></div>
-          <div class="legend"><span><i class="lg c"></i>お休み</span><span><i class="lg s"></i>時間変更</span><span><i class="lg"></i>営業</span></div>
-        </div>
-        <div class="row"><button type="button" class="small" id="calReset">定休日どおりに戻す</button><span class="status" id="s-cal" aria-live="polite"></span></div>
-        <div class="field"><label for="f-calnote">ひとこと</label><input type="text" id="f-calnote" placeholder="例:23日は営業します"></div>
-
-        <div class="okbox" id="calOkBox">
-          <p id="calOkText"></p>
-          <button type="button" class="primary" id="calOk">この内容でOK</button>
-          <div class="future" id="calFuture" hidden>
-            <span class="pill">これから作る部分</span>
-            <p>ここから先(決めた日に自動で投稿する)は、これから作る部分です。</p>
-            <p class="hint">今は、「3. できあがり」から画像を保存して、Instagramのアプリで予約投稿してください。</p>
-            <button type="button" id="calDone">投稿まで済んだ</button>
-          </div>
-        </div>
-
-        <div class="testbox">
-          <div class="row"><button type="button" id="noticeTest">お知らせの表示を試す</button></div>
-          <div class="seg" id="simModes" role="radiogroup" aria-label="試す日" hidden>
-            <label><input type="radio" name="sim" value="due" checked>知らせる時期</label>
-            <label><input type="radio" name="sim" value="late">出す日を過ぎた</label>
-          </div>
-          <p class="status" id="simStatus" aria-live="polite"></p>
-          <p class="hint">定休日、出す日、何日前から知らせるかは、下の「お店の設定(仮)」で変えられます。</p>
-        </div>
-      </div>
     </section>
 
     <section class="preview" aria-labelledby="h-prev">
@@ -146,38 +103,19 @@
       </div>
     </section>
 
-    <details class="box" id="settingsBox">
-      <summary>お店の設定(仮)</summary>
-      <p class="hint">今夜の試作のための、仮の設定です。この端末にだけ保存されます。あとで「登録」の画面に移します。</p>
-      <div class="stack" id="settingsForm">
-        <div class="field"><label for="set-hours">営業時間(入れると、営業中とカレンダーに出ます)</label><input type="text" id="set-hours" placeholder="例:10:00 – 18:00"></div>
-        <div class="field"><label for="set-theme">営業中の色(カレンダーは月ごとの季節の色になります)</label><select id="set-theme"></select></div>
-        <div class="field"><span id="l-reg">定休日</span><div class="checks" id="regular" role="group" aria-labelledby="l-reg"></div></div>
-        <div class="field"><span id="l-calset">営業カレンダーのお知らせ</span>
-          <div class="inline" role="group" aria-labelledby="l-calset">
-            <select id="set-caltarget" aria-label="どの月の分を出すか"><option value="next">翌月の分を</option><option value="same">その月の分を</option></select>
-            <span>毎月</span><select id="set-calday" aria-label="カレンダーを出す日"></select><span>日に出す。</span>
-            <select id="set-callead" aria-label="何日前から知らせるか"></select><span>日前から、いちばん上に知らせる。</span>
-          </div>
-        </div>
-        <div class="row"><button type="button" class="small" id="settingsReset">設定を最初に戻す</button></div>
-      </div>
-    </details>
   </main>
 
-  <!-- ===== 登録・記録(これから作る) ===== -->
-  <main class="grid" id="tab-book" hidden>
+  <!-- ===== お店の人用 ===== -->
+  <main class="grid" id="tab-shop" hidden>
     <section class="stack">
-      <h2>登録</h2>
-      <p>ひとこと集、商品メモ、お店の設定を登録する画面は、これから作ります。</p>
-      <p class="hint">今は、例として入れたひとことと商品が出ています。お店の設定は「つくる」の画面のいちばん下で、仮に変えられます。</p>
+      <h2>登録・確認(お店の人用)</h2>
+      <p>ひとこと、商品、お店の設定の登録と、営業カレンダーの確認は、お店の人用のページで行います。</p>
+      <div class="row"><button type="button" class="primary" id="adminOpen">登録・確認のページを開く</button></div>
+      <p class="hint" id="adminSoon">お店の人用のページは準備中です。今は、例として入れたひとことと商品が出ています。</p>
     </section>
-  </main>
-  <main class="grid" id="tab-log" hidden>
     <section class="stack">
-      <h2>作業時間の記録</h2>
-      <p class="hint">「つくる」の画面で内容に触りはじめてから、保存か共有をするまでの時間です。今までのやり方で計った時間と比べるときに使います。</p>
-      <p class="hint">今は、この端末の分だけが残ります。全員の分を1か所に集めるしくみは、これから作ります。</p>
+      <h2>作業時間の記録(このスマホの分)</h2>
+      <p class="hint">「つくる」の画面で内容に触りはじめてから、保存か共有をするまでの時間です。今は、このスマホの分だけが残ります。全員の分は、あとでお店の人用のページで見られるようにします。</p>
       <p class="avg" id="logAvg"></p>
       <div class="scroll"><table id="logTable"><thead><tr><th>日時</th><th>種類</th><th>大きさ</th><th>秒</th></tr></thead><tbody></tbody></table></div>
       <p class="hint" id="logEmpty">まだ記録がありません。</p>

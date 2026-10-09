@@ -1,9 +1,9 @@
-// 画面の動き。データは今は端末の中だけ(段階3で Firestore につなぐ)。
-import { THEMES, FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=6';
-import { WEEK, iso, md, pad2, dateLabel } from './text.js?v=6';
-import { monthKey, monthInfo, mapFor, nextState, countDays, noticeFor, simulatedNow } from './calendar.js?v=6';
-import { ls, photoStore } from './store.js?v=6';
-import { draw } from './draw.js?v=6';
+// スタッフの画面の動き。データは今は画面に入れた仮のもの(段階3で、GASの公開窓口から配る配信データに切りかえる)。
+import { FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=7';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=7';
+import { CONFIG } from '../config.js?v=7';
+import { ls, photoStore } from './store.js?v=7';
+import { draw } from './draw.js?v=7';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -17,35 +17,26 @@ if (/Line\/|Instagram|FBAN|FBAV|FB_IAB/i.test(navigator.userAgent)) $('#inapp').
 // 開いたまま日付が変わったら、まっさらにするために読み込み直す
 document.addEventListener('visibilitychange', () => { if (!document.hidden && iso(new Date()) !== todayIso) location.reload(); });
 
-// ---------- 端末に置くデータ ----------
-let settings = { ...DEFAULT_SETTINGS, ...ls.get('pn-settings', {}) };
-const cal = { months: {}, notes: {}, ...ls.get('pn-cal', {}) }; // 日にちの編集とひとこと
-const calok = ls.get('pn-calok', {});                             // 確認の状態 { 'YYYY-MM': { at, done } }
-let firstUse = ls.get('pn-first', null);
-if (!firstUse) { firstUse = todayIso; ls.set('pn-first', firstUse); }
-const saveCal = () => ls.set('pn-cal', cal), saveOk = () => ls.set('pn-calok', calok);
+// ---------- お店の設定(段階3までは、画面に入れた仮のもの) ----------
+const settings = { ...DEFAULT_SETTINGS };
+// 10月7日の試作で、端末に残したカレンダーと設定は使わないので消す
+['pn-settings', 'pn-cal', 'pn-calok', 'pn-first'].forEach(k => ls.del(k));
 
 // ---------- 作りかけ(その日のうちだけ) ----------
 const d0 = ls.get('pn-draft', {}), draft = d0.day === todayIso ? d0 : {};
 if (d0.day && d0.day !== todayIso) ls.del('pn-draft');
 let curCat = draft.cat || '', curPhrase = draft.phrase || '';
+if (draft.kind === 'cal') delete draft.kind; // 営業カレンダーは準備中
 ['kind', 'fmt', 'pos'].forEach(n => { if (draft[n]) setRadio(n, draft[n]); });
 $('#f-date').value = draft.date || todayIso;
 if (draft.badge != null) $('#f-badge').value = draft.badge;
 $('#photoPos').value = draft.photoPos ?? 50;
 
-const ySel = $('#cal-y'), mSel = $('#cal-m');
-const ensureYear = y => { if (![...ySel.options].some(o => +o.value === y)) ySel.add(new Option(`${y}年`, y)); };
-for (let y = today.getFullYear(); y <= today.getFullYear() + 1; y++) ensureYear(y);
-for (let m = 1; m <= 12; m++) mSel.add(new Option(`${m}月`, m));
-ensureYear(draft.calY || today.getFullYear());
-ySel.value = draft.calY || today.getFullYear(); mSel.value = draft.calM || today.getMonth() + 1;
-
 function saveDraft() {
   ls.set('pn-draft', {
     day: todayIso, kind: radio('kind'), fmt: radio('fmt'), pos: radio('pos'), date: $('#f-date').value,
     cat: curCat, phrase: curPhrase, product: $('#f-product').value, badge: $('#f-badge').value,
-    photoPos: +$('#photoPos').value, calY: +ySel.value, calM: +mSel.value,
+    photoPos: +$('#photoPos').value,
     t0, recorded
   });
 }
@@ -171,154 +162,26 @@ $('#f-product').innerHTML = PRODUCTS.map(p => `<option value="${p.id}">${esc(p.n
 if (PRODUCTS.some(p => p.id === draft.product)) $('#f-product').value = draft.product;
 const product = () => PRODUCTS.find(p => p.id === $('#f-product').value) || null;
 
-// ---------- 営業カレンダー ----------
-const curYM = () => { const y = +ySel.value, m = +mSel.value; return { y, m, key: monthKey(y, m) }; };
-const curMap = () => { const { y, m } = curYM(); return mapFor(y, m, cal.months, settings.regular); };
-const dayLabel = s => (s === 'c' ? 'お休み' : s === 's' ? '時間変更' : '営業');
-function paintGrid() {
-  const { y, m, key } = curYM(), { first, n } = monthInfo(y, m), map = curMap(), g = $('#calgrid');
-  g.textContent = '';
-  WEEK.forEach(w => { const el = document.createElement('div'); el.className = 'wd'; el.textContent = w; el.setAttribute('aria-hidden', 'true'); g.append(el); });
-  for (let i = 0; i < first; i++) g.append(document.createElement('span'));
-  for (let d = 1; d <= n; d++) {
-    const b = document.createElement('button'); b.type = 'button'; b.textContent = d; b.dataset.d = d;
-    setDay(b, m, d, map[d] || ''); g.append(b);
-  }
-  $('#calReset').disabled = !cal.months[key];
-  if (document.activeElement !== $('#f-calnote')) $('#f-calnote').value = cal.notes[key] || '';
-  paintOk();
-}
-function setDay(b, m, d, s) {
-  const w = WEEK[(monthInfo(+ySel.value, m).first + d - 1) % 7];
-  b.dataset.s = s; b.setAttribute('aria-label', `${m}月${d}日(${w}) ${dayLabel(s)}`);
-}
-function paintOk() {
-  const { m, key } = curYM(), { closed, changed: ch } = countDays(curMap()), rec = calok[key];
-  const days = `お休み ${closed}日${ch ? `、時間変更 ${ch}日` : ''}`;
-  $('#calOkText').textContent = rec
-    ? `${m}月の営業日は確認ずみです(${rec.at})。${days}。日にちを変えると、もう一度確認が必要になります。`
-    : closed + ch === 0 ? `${m}月はお休みの日が入っていません。お休みなしでよければ「この内容でOK」を押してください。`
-      : `${m}月は、${days} です。まちがいがなければ「この内容でOK」を押してください。`;
-  $('#calOk').hidden = !!rec; $('#calFuture').hidden = !rec;
-  const done = $('#calDone'); done.disabled = !!(rec && rec.done); done.textContent = rec && rec.done ? '投稿まで済みました' : '投稿まで済んだ';
-}
-function unconfirm(key, why) {
-  if (!calok[key]) return;
-  delete calok[key]; saveOk(); $('#s-cal').textContent = why;
-}
-$('#calgrid').addEventListener('click', e => {
-  const b = e.target.closest('button[data-d]'); if (!b) return;
-  const { m, key } = curYM(), map = { ...curMap() }, d = +b.dataset.d, s = nextState(map[d]);
-  if (s) map[d] = s; else delete map[d];
-  cal.months[key] = map; saveCal(); setDay(b, m, d, s);
-  unconfirm(key, '日にちを変えたので、確認を取り消しました。もう一度「この内容でOK」を押してください。');
-  $('#calReset').disabled = false; paintOk(); updateNotice(); changed();
-});
-$('#calReset').addEventListener('click', () => {
-  const { key } = curYM(); delete cal.months[key]; saveCal();
-  unconfirm(key, '定休日どおりに戻したので、確認を取り消しました。');
-  paintGrid(); updateNotice(); changed();
-});
-$('#f-calnote').addEventListener('input', e => { const { key } = curYM(); cal.notes[key] = e.target.value; saveCal(); changed(); });
-[ySel, mSel].forEach(el => el.addEventListener('change', () => { $('#s-cal').textContent = ''; paintGrid(); saveDraft(); changed(); }));
-$('#calOk').addEventListener('click', () => {
-  const { key } = curYM(); calok[key] = { at: md(new Date()), done: false }; saveOk();
-  $('#s-cal').textContent = ''; paintOk(); updateNotice();
-});
-function markDone(key) { if (!calok[key]) return; calok[key].done = true; saveOk(); paintOk(); updateNotice(); }
-$('#calDone').addEventListener('click', () => markDone(curYM().key));
-
-// ---------- 確認のお知らせ ----------
-let sim = false;
-const noticeNow = () => (sim ? simulatedNow(today, settings, radio('sim')) : today);
-function updateNotice() {
-  const now = noticeNow(), n = noticeFor(now, settings, calok, firstUse), box = $('#notice');
-  const show = ['due', 'ok', 'late'].includes(n.state);
-  box.hidden = !show;
-  $('#noticeTag').hidden = !sim; $('#noticeTag').textContent = `表示テスト中:今日を ${md(now)} として表示しています`;
-  $('#noticeTest').textContent = sim ? '表示テストをやめる' : 'お知らせの表示を試す';
-  $('#simModes').hidden = !sim;
-  $('#simStatus').textContent = !sim ? '' : show ? `${md(now)}として、いちばん上にお知らせを出しています。`
-    : n.state === 'done' ? `${md(now)}として見ています。この月は「投稿まで済んだ」ので、お知らせは出ません。カレンダーの「定休日どおりに戻す」を押すと、確認の前に戻ります。`
-      : `${md(now)}として見ています。まだお知らせを出す時期ではありません。`;
-  if (!show) return;
-  const text = $('#noticeText'), small = document.createElement('small'); text.textContent = ''; box.dataset.state = n.state;
-  if (n.state === 'ok') {
-    text.append(`${n.tm}月の営業日は確認ずみです(${n.rec.at})。`);
-    small.textContent = `画像を保存して、${md(n.P)}に出るように予約投稿してください。(決めた日に自動で投稿するしくみは、これから作る部分です)`;
-    $('#noticeGo').textContent = 'カレンダーを開く';
-  } else if (n.state === 'late') {
-    text.append(`${n.tm}月の営業日が、まだ確認されていません。`);
-    small.textContent = `営業カレンダーを出す日(${md(n.P)})を過ぎています。`;
-    $('#noticeGo').textContent = '営業日を確認する';
-  } else {
-    text.append(`${n.tm}月の営業日を確認してください。`);
-    small.textContent = n.days === 0 ? `今日(${md(n.P)})が、営業カレンダーを出す日です。` : `${md(n.P)}(あと${n.days}日)に、営業カレンダーを出す予定です。`;
-    $('#noticeGo').textContent = '営業日を確認する';
-  }
-  text.append(small);
-  $('#noticeDone').hidden = n.state !== 'ok';
-  box.dataset.key = n.key; box.dataset.ty = n.ty; box.dataset.tm = n.tm;
-}
-$('#noticeGo').addEventListener('click', () => {
-  const box = $('#notice'), ty = +box.dataset.ty, tm = +box.dataset.tm;
-  setRadio('kind', 'cal'); ensureYear(ty); ySel.value = ty; mSel.value = tm;
-  if (location.hash !== '#make') location.hash = 'make';
-  syncKind(); paintGrid(); saveDraft(); showTab();
-  $('#fs-cal').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-});
-$('#noticeDone').addEventListener('click', () => markDone($('#notice').dataset.key));
-$('#noticeTest').addEventListener('click', () => {
-  sim = !sim; updateNotice();
-  if (sim && !$('#notice').hidden) $('#notice').scrollIntoView({ block: 'start' });
-});
-$('#simModes').addEventListener('change', updateNotice);
-
-// ---------- お店の設定(仮) ----------
-$('#set-theme').innerHTML = Object.entries(THEMES).map(([k, t]) => `<option value="${k}">${t.name}</option>`).join('');
-$('#regular').innerHTML = WEEK.map((w, i) => `<label><input type="checkbox" value="${i}" aria-label="${w}曜日">${w}</label>`).join('');
-for (let d = 1; d <= 28; d++) $('#set-calday').add(new Option(d, d));
-[1, 2, 3, 5, 7, 10].forEach(d => $('#set-callead').add(new Option(d, d)));
-function paintSettings() {
-  const st = settings, act = document.activeElement;
-  if ($('#set-hours') !== act) $('#set-hours').value = st.hours || '';
-  $('#set-theme').value = st.theme; $('#set-calday').value = st.calday; $('#set-callead').value = st.callead; $('#set-caltarget').value = st.caltarget;
-  $$('#regular input').forEach(el => { el.checked = st.regular.includes(+el.value); });
-}
-function readSettings() {
-  settings = {
-    hours: $('#set-hours').value.trim(), theme: $('#set-theme').value,
-    regular: $$('#regular input:checked').map(el => +el.value),
-    calday: +$('#set-calday').value, callead: +$('#set-callead').value, caltarget: $('#set-caltarget').value
-  };
-  ls.set('pn-settings', settings); paintGrid(); updateNotice(); changed();
-}
-$('#settingsForm').addEventListener('input', readSettings);
-$('#settingsForm').addEventListener('change', readSettings);
-$('#settingsReset').addEventListener('click', () => { settings = { ...DEFAULT_SETTINGS }; ls.del('pn-settings'); paintSettings(); paintGrid(); updateNotice(); changed(); });
-
 // ---------- 画像を描く ----------
 const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=6';
+parkImg.src = 'images/parking.jpg?v=7';
 function drawState() {
-  const { y, m, key } = curYM();
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: settings.theme, hours: settings.hours,
     open: { date: dateLabel($('#f-date').value || todayIso), pos: radio('pos'), phrase: phraseText() },
     product: product(), badge: $('#f-badge').value,
-    parkImage: parkImg.complete && parkImg.naturalWidth ? parkImg : null,
-    cal: { ...monthInfo(y, m), map: curMap(), note: (cal.notes[key] || '').trim() }
+    parkImage: parkImg.complete && parkImg.naturalWidth ? parkImg : null
   };
 }
 // 使う文字の分だけ、書体を読み込む(読み込めないときは端末の丸ゴシックで描く)
 const seen = new Set();
 async function ensureFonts(s) {
   if (!document.fonts || !document.fonts.load) return false;
-  const text = 'OPENNEW季節限定本日のおすすめ駐車場ご案内P月の営業日年お休み時間変更商品をえらんでください0123456789.:– ' + WEEK.join('')
-    + s.open.phrase + (s.product ? s.product.name + s.product.desc : '') + s.hours + s.cal.note;
+  const text = 'OPENNEW季節限定本日のおすすめ駐車場ご案内P商品をえらんでください0123456789.:– ' + WEEK.join('')
+    + s.open.phrase + (s.product ? s.product.name + s.product.desc : '') + s.hours;
   const need = [...new Set(text)].filter(ch => !seen.has(ch));
   if (!need.length) return false;
   need.forEach(ch => seen.add(ch));
@@ -408,27 +271,31 @@ $('#newBtn').addEventListener('click', () => {
 // ---------- 画面の切りかえ ----------
 function syncKind() {
   const k = radio('kind');
-  ['open', 'new', 'park', 'cal'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
-  $('#photoBox').hidden = k === 'cal' || k === 'park';
+  ['open', 'new', 'park'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
+  $('#photoBox').hidden = k === 'park';
   $('#photoPosWrap').hidden = !photo;
 }
 function showTab() {
-  const t = ['make', 'book', 'log'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'make';
-  ['make', 'book', 'log'].forEach(n => {
+  const t = ['make', 'shop'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'make';
+  ['make', 'shop'].forEach(n => {
     $('#tab-' + n).hidden = n !== t;
     if (n === t) $('#nav-' + n).setAttribute('aria-current', 'page'); else $('#nav-' + n).removeAttribute('aria-current');
   });
   if (t === 'make') changed();
 }
 addEventListener('hashchange', showTab);
-$('#kinds').addEventListener('change', () => { say(''); syncKind(); if (radio('kind') === 'cal') paintGrid(); saveDraft(); changed(); });
+$('#kinds').addEventListener('change', () => { say(''); syncKind(); saveDraft(); changed(); });
 $('#fmts').addEventListener('change', () => { saveDraft(); changed(); });
 ['#f-date', '#photoPos', '#f-product', '#f-badge'].forEach(sel => $(sel).addEventListener('input', () => { syncKind(); saveDraft(); changed(); }));
 $$('input[name=pos]').forEach(el => el.addEventListener('change', () => { saveDraft(); changed(); }));
 
-// 内容に触ったら、時間を計りはじめる(お店の設定は数えない)
-['input', 'change'].forEach(ev => $('#tab-make').addEventListener(ev, e => { if (!e.target.closest('#settingsBox')) touch(); }));
-$('#calgrid').addEventListener('click', touch);
+// 内容に触ったら、時間を計りはじめる
+['input', 'change'].forEach(ev => $('#tab-make').addEventListener(ev, touch));
 
-paintSettings(); paintPhrases(); paintGrid(); syncKind(); updateNotice(); paintLog(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
+// ---------- お店の人用のページ ----------
+$('#adminOpen').disabled = !CONFIG.adminUrl;
+$('#adminSoon').hidden = !!CONFIG.adminUrl;
+$('#adminOpen').addEventListener('click', () => { if (CONFIG.adminUrl) location.href = CONFIG.adminUrl; });
+
+paintPhrases(); syncKind(); paintLog(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());
