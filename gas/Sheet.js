@@ -50,6 +50,24 @@ function currentVersion_() {
 
 const newId_ = () => Utilities.getUuid().replace(/-/g, '').slice(0, 10);
 
+// 1つの行の、決まった列だけを書きかえる
+function setCells_(key, row, values) {
+  const sh = sheet_(key), cols = SHEETS[key].cols.map(c => c[0]);
+  Object.keys(values).forEach(k => {
+    const c = cols.indexOf(k);
+    if (c >= 0) sh.getRange(row, c + 1).setValue(String(values[k]));
+  });
+}
+function findRow_(key, id) {
+  const r = readTable_(key).find(x => x.id === id);
+  if (!r) throw new Error('その行が見つかりません。読み直してください。');
+  return r.row;
+}
+// 中身(バイト)のSHA-256を、16進の文字にする(画像が予約の記録と同じかを確かめる)
+function sha256Hex_(bytes) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes).map(b => ((b + 256) % 256).toString(16).padStart(2, '0')).join('');
+}
+
 // 動作記録に1行足す。新しい500行だけ残す
 function logRun_(job, result, detail) {
   try {

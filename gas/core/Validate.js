@@ -114,7 +114,8 @@ function buildFeed(tables, generatedAt, auto) {
   const settings = readSettings(tables.settings || [], problems);
   const phrases = checkPhrases(tables.phrases || [], problems);
   const products = checkProducts(tables.products || [], problems);
-  const { calendars, calendarState } = checkCalendars(tables.calendars || [], problems);
+  const checked = checkCalendars(tables.calendars || [], problems), calendars = checked.calendars;
+  const calendarState = typeof withPosted === 'function' ? withPosted(checked.calendarState, tables.reservations) : checked.calendarState;
   const version = settings.version;
   delete settings.version;
   const lastOkAt = settings.lastOkAt;

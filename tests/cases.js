@@ -5,7 +5,7 @@ import { monthInfo, regularMap, countDays, cycleFor, noticeFor, simulatedNow, ne
 // 1文字の幅を「大きさ」と同じにした、仮の幅の測り方
 const mono = (t, s) => [...t].length * s;
 const D = (y, m, d) => new Date(y, m - 1, d);
-const ST = { calday: 25, callead: 5, caltarget: 'next', regular: [1, 2] };
+const ST = { notice1: 20, notice2: 23, postDay: 25 };
 
 export const cases = [
   // ---------- 日付 ----------
@@ -14,8 +14,7 @@ export const cases = [
   ['2026年11月は30日まで', eq => eq(monthInfo(2026, 11).n, 30)],
   ['定休日を月曜と火曜にすると、2026年11月のお休みは9日', eq => eq(countDays(regularMap(2026, 11, [1, 2])).closed, 9)],
   ['12月に「翌月の分」を開くと、2027年1月になる', eq => { const c = cycleFor(2026, 11, ST); eq(c.ty, 2027); eq(c.tm, 1); eq(c.key, '2027-01'); }],
-  ['「その月の分」なら、12月は2026年12月', eq => eq(cycleFor(2026, 11, { ...ST, caltarget: 'same' }).key, '2026-12')],
-  ['出す日が31日でも、2月は月末の日になる', eq => eq(cycleFor(2027, 1, { ...ST, calday: 31 }).P.getDate(), 28)],
+  ['投稿する日は前の月の25日、知らせるのは20日から', eq => { const c = cycleFor(2026, 9, ST); eq(c.P.getDate(), 25); eq(c.start.getDate(), 20); eq(c.key, '2026-11'); }],
   ['タップするたびに お休み → 時間変更 → 営業', eq => { eq(nextState(''), 'c'); eq(nextState('c'), 's'); eq(nextState('s'), ''); }],
 
   // ---------- 確認のお知らせ ----------
@@ -24,12 +23,14 @@ export const cases = [
     const n = noticeFor(D(2026, 10, 20), ST, {}, '2026-10-01');
     eq(n.state, 'due'); eq(n.key, '2026-11'); eq(n.days, 5);
   }],
+  ['使い始めた日が分からないときは、知らせない', eq => eq(noticeFor(D(2026, 10, 26), ST, {}, '').state, 'early')],
   ['前日はまだ早い(10月19日)', eq => eq(noticeFor(D(2026, 10, 19), ST, {}, '2026-10-01').state, 'early')],
   ['出す日の当日は、まだ「確認の時期」(あと0日)', eq => { const n = noticeFor(D(2026, 10, 25), ST, {}, '2026-10-01'); eq(n.state, 'due'); eq(n.days, 0); }],
-  ['確認ずみ', eq => eq(noticeFor(D(2026, 10, 22), ST, { '2026-11': { at: '10月22日', done: false } }, '2026-10-01').state, 'ok')],
+  ['確認ずみ', eq => eq(noticeFor(D(2026, 10, 22), ST, { '2026-11': 'confirmed' }, '2026-10-01').state, 'ok')],
   ['期限を過ぎた(10月26日、未確認)', eq => eq(noticeFor(D(2026, 10, 26), ST, {}, '2026-10-01').state, 'late')],
-  ['期限を過ぎても、確認ずみなら「確認ずみ」', eq => eq(noticeFor(D(2026, 10, 26), ST, { '2026-11': { at: '10月26日', done: false } }, '2026-10-01').state, 'ok')],
-  ['投稿まで済んだ', eq => eq(noticeFor(D(2026, 10, 26), ST, { '2026-11': { at: '10月22日', done: true } }, '2026-10-01').state, 'done')],
+  ['期限を過ぎても、確認ずみなら「確認ずみ」', eq => eq(noticeFor(D(2026, 10, 26), ST, { '2026-11': 'confirmed' }, '2026-10-01').state, 'ok')],
+  ['確認する前(未確認)の月は「確認の時期」', eq => eq(noticeFor(D(2026, 10, 22), ST, { '2026-11': 'unconfirmed' }, '2026-10-01').state, 'due')],
+  ['投稿済み', eq => eq(noticeFor(D(2026, 10, 26), ST, { '2026-11': 'posted' }, '2026-10-01').state, 'done')],
   ['使い始める前の月は知らせない(10月27日に使い始めた)', eq => eq(noticeFor(D(2026, 10, 27), ST, {}, '2026-10-27').state, 'early')],
   ['12月20日からは、2027年1月の分を知らせる', eq => eq(noticeFor(D(2026, 12, 20), ST, {}, '2026-10-01').key, '2027-01')],
   ['表示テスト「知らせる時期」は、10月7日なら10月20日として見る', eq => eq(simulatedNow(D(2026, 10, 7), ST, 'due').getDate(), 20)],

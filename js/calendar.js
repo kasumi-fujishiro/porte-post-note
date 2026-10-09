@@ -1,5 +1,5 @@
 // 営業カレンダーの計算。画面に触らない(テストできるように)。
-import { pad2, iso } from './text.js?v=10';
+import { pad2, iso } from './text.js?v=11';
 
 export const monthKey = (y, m) => `${y}-${pad2(m)}`;
 
@@ -28,38 +28,36 @@ export function countDays(map) {
 
 const day0 = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-// m0 は 0〜11(Date と同じ)。その月に出すカレンダーの予定。
-// P: 出す日、start: 知らせ始める日、ty / tm: 何年何月の分か
-export function cycleFor(y, m0, st) {
-  const P = new Date(y, m0, Math.min(+st.calday || 25, new Date(y, m0 + 1, 0).getDate()));
-  const T = new Date(y, m0 + (st.caltarget === 'same' ? 0 : 1), 1);
-  const start = new Date(P); start.setDate(start.getDate() - (+st.callead || 5));
-  const ty = T.getFullYear(), tm = T.getMonth() + 1;
+// 日程(sch):{ notice1: 知らせる日(20), notice2: もう一度知らせる日(23), postDay: 投稿する日(25) }
+// m0 は 0〜11(Date と同じ)。その月に出す、翌月の分のカレンダーの予定。
+// P: 投稿する日、start: 知らせ始める日、ty / tm: 何年何月の分か、end: その月の終わり
+export function cycleFor(y, m0, sch) {
+  const P = new Date(y, m0, +sch.postDay || 25), start = new Date(y, m0, +sch.notice1 || 20);
+  const T = new Date(y, m0 + 1, 1), ty = T.getFullYear(), tm = T.getMonth() + 1;
   return { P, start, ty, tm, key: monthKey(ty, tm), end: new Date(ty, tm, 0) };
 }
 
 // お知らせの状態
-//   early: まだ早い(出さない)  due: 確認の時期  ok: 確認ずみ  late: 期限を過ぎた  done: 投稿まで済んだ(出さない)
-// now: 今日、st: 設定、calok: { 'YYYY-MM': { at, done } }、firstUse: 使い始めた日 'YYYY-MM-DD'
-export function noticeFor(now, st, calok, firstUse) {
+//   early: まだ早い(出さない)  due: 確認の時期  ok: 確認ずみ  late: 期限を過ぎた  done: 投稿済み(出さない)
+// now: 今日、sch: 日程、states: { 'YYYY-MM': 'unconfirmed' | 'confirmed' | 'posted' }、firstUse: 使い始めた日
+export function noticeFor(now, sch, states, firstUse) {
   now = day0(now);
   const y = now.getFullYear(), m = now.getMonth();
-  const next = cycleFor(y, m + 1, st), cur = cycleFor(y, m, st), prev = cycleFor(y, m - 1, st);
-  const c = now >= next.start ? next : now >= cur.start ? cur : now <= prev.end ? prev : null;
-  // アプリを使い始める前に出す予定だった分は、知らせない
-  if (!c || iso(c.P) < firstUse) return { state: 'early' };
-  const rec = calok[c.key] || null;
+  const cur = cycleFor(y, m, sch), prev = cycleFor(y, m - 1, sch);
+  const c = now >= cur.start ? cur : now <= prev.end ? prev : null;
+  // アプリを使い始める前に出す予定だった分は、知らせない(使い始めた日が分からないときも出さない)
+  if (!c || !firstUse || iso(c.P) < firstUse) return { state: 'early' };
+  const st = (states || {})[c.key];
   const days = Math.round((c.P - now) / 86400000);
-  const state = rec ? (rec.done ? 'done' : 'ok') : days < 0 ? 'late' : 'due';
-  return { state, ...c, days, rec, now };
+  const state = st === 'posted' ? 'done' : st === 'confirmed' ? 'ok' : days < 0 ? 'late' : 'due';
+  return { state, ...c, days, now };
 }
 
-// 「お知らせの表示を試す」用の、仮の今日。
-// mode: due=知らせ始めの日、late=出す日の次の日
-export function simulatedNow(today, st, mode) {
+// 「お知らせの表示を試す」用の、仮の今日。mode: due=知らせ始めの日、late=投稿する日の次の日
+export function simulatedNow(today, sch, mode) {
   today = day0(today);
-  const cur = cycleFor(today.getFullYear(), today.getMonth(), st);
-  const c = today <= cur.P ? cur : cycleFor(today.getFullYear(), today.getMonth() + 1, st);
+  const cur = cycleFor(today.getFullYear(), today.getMonth(), sch);
+  const c = today <= cur.P ? cur : cycleFor(today.getFullYear(), today.getMonth() + 1, sch);
   if (mode === 'late') { const d = new Date(c.P); d.setDate(d.getDate() + 1); return d; }
   return today < c.start ? new Date(c.start) : today;
 }

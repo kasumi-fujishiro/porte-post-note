@@ -1,11 +1,12 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=10';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=10';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=10';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=10';
-import { CONFIG } from '../config.js?v=10';
-import { ls, photoStore } from './store.js?v=10';
-import { draw } from './draw.js?v=10';
+import { FORMATS, KINDS } from './data.js?v=11';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=11';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=11';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=11';
+import { monthInfo, noticeFor } from './calendar.js?v=11';
+import { CONFIG } from '../config.js?v=11';
+import { ls, photoStore } from './store.js?v=11';
+import { draw } from './draw.js?v=11';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -28,7 +29,6 @@ let data = cachedFeed() || fallbackFeed();
 const d0 = ls.get('pn-draft', {}), draft = d0.day === todayIso ? d0 : {};
 if (d0.day && d0.day !== todayIso) ls.del('pn-draft');
 let curCat = draft.cat || '', curPhrase = draft.phrase || '';
-if (draft.kind === 'cal') delete draft.kind; // 営業カレンダーは準備中
 ['kind', 'fmt', 'pos'].forEach(n => { if (draft[n]) setRadio(n, draft[n]); });
 $('#f-date').value = draft.date || todayIso;
 if (draft.badge != null) $('#f-badge').value = draft.badge;
@@ -38,7 +38,7 @@ function saveDraft() {
   ls.set('pn-draft', {
     day: todayIso, kind: radio('kind'), fmt: radio('fmt'), pos: radio('pos'), date: $('#f-date').value,
     cat: curCat, phrase: curPhrase, product: $('#f-product').value, badge: $('#f-badge').value,
-    photoPos: +$('#photoPos').value,
+    photoPos: +$('#photoPos').value, calMonth: $('#f-calmonth').value,
     t0, recorded
   });
 }
@@ -170,18 +170,49 @@ function paintProducts() {
 }
 const product = () => data.products.find(p => p.id === $('#f-product').value) || null;
 
+// ---------- 営業カレンダー(確認ずみの月だけ。編集はお店の人用のページで) ----------
+const calendars = () => (data.calendars || []).slice().sort((a, b) => (a.month < b.month ? -1 : 1));
+function paintCalendars() {
+  const list = calendars(), sel = $('#f-calmonth'), keep = sel.value || draft.calMonth;
+  sel.innerHTML = list.map(c => `<option value="${c.month}">${+c.month.slice(0, 4)}年${+c.month.slice(5)}月</option>`).join('');
+  const nextKey = (() => { const d = new Date(today.getFullYear(), today.getMonth() + 1, 1); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; })();
+  sel.value = list.some(c => c.month === keep) ? keep : list.some(c => c.month === nextKey) ? nextKey : (list[list.length - 1] || {}).month || '';
+  const none = !list.length;
+  $('#kind-cal').disabled = none; $('#kindCalWrap').classList.toggle('soon', none);
+  $('#kindCalNote').textContent = none ? 'お店の人が確認すると、ここで保存できます' : '確認ずみの月の画像を保存する';
+  if (none && radio('kind') === 'cal') setRadio('kind', 'open');
+}
+const calOf = () => { const c = calendars().find(x => x.month === $('#f-calmonth').value); if (!c) return null; const y = +c.month.slice(0, 4), m = +c.month.slice(5); return { ...monthInfo(y, m), map: c.days || {}, note: c.note || '' }; };
+
+// ---------- 確認のお知らせ(ログインしていない人にも出す。確認はお店の人用のページで) ----------
+function updateNotice() {
+  const sch = data.settings.schedule;
+  if (!sch) { $('#notice').hidden = true; return; }
+  const n = noticeFor(today, sch, data.calendarState || {}, data.settings.firstUse || ''), box = $('#notice');
+  const show = n.state === 'due' || n.state === 'late';
+  box.hidden = !show; if (!show) return;
+  const P = `${n.P.getMonth() + 1}月${n.P.getDate()}日`, small = document.createElement('small');
+  box.dataset.state = n.state; box.dataset.key = n.key;
+  $('#noticeText').textContent = n.state === 'late' ? `${n.tm}月の営業日が、まだ確認されていません。` : `${n.tm}月の営業日を確認してください。`;
+  small.textContent = n.state === 'late' ? `投稿する日(${P})を過ぎています。お店の人に知らせてください。` : `${n.days === 0 ? `今日(${P})` : `${P}(あと${n.days}日)`}に、営業カレンダーを投稿する予定です。`;
+  $('#noticeText').append(small);
+  $('#noticeGo').hidden = !CONFIG.adminUrl;
+}
+$('#noticeGo').addEventListener('click', () => { if (CONFIG.adminUrl) location.href = `${CONFIG.adminUrl}?tab=calendar&month=${$('#notice').dataset.key}`; });
+
 // ---------- 画像を描く ----------
 const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=10';
+parkImg.src = 'images/parking.jpg?v=11';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
     open: { date: dateLabel($('#f-date').value || todayIso), pos: radio('pos'), phrase: phraseText() },
     product: product(), badge: $('#f-badge').value,
-    parkImage: parkImg.complete && parkImg.naturalWidth ? parkImg : null
+    parkImage: parkImg.complete && parkImg.naturalWidth ? parkImg : null,
+    cal: calOf() || { ...monthInfo(today.getFullYear(), today.getMonth() + 1), map: {}, note: '' }
   };
 }
 // 使う文字の分だけ、書体を読み込む(読み込めないときは端末の丸ゴシックで描く)
@@ -189,7 +220,7 @@ const seen = new Set();
 async function ensureFonts(s) {
   if (!document.fonts || !document.fonts.load) return false;
   const text = 'OPENNEW季節限定本日のおすすめ駐車場ご案内P商品をえらんでください0123456789.:– ' + WEEK.join('')
-    + s.open.phrase + (s.product ? s.product.name + s.product.desc : '') + s.hours;
+    + s.open.phrase + (s.product ? s.product.name + s.product.desc : '') + s.hours + (s.cal.note || '') + '月の営業日年お休み時間変更';
   const need = [...new Set(text)].filter(ch => !seen.has(ch));
   if (!need.length) return false;
   need.forEach(ch => seen.add(ch));
@@ -236,6 +267,7 @@ function ready() {
   const k = radio('kind');
   if ((k === 'open' || k === 'new') && !photo) { say('写真がないと保存できません。先に「写真をえらぶ」を押してください。', true); return false; }
   if (k === 'new' && !product()) { say('商品がまだ登録されていません。', true); return false; }
+  if (k === 'cal' && !calOf()) { say('確認ずみのカレンダーがありません。', true); return false; }
   if (k === 'park' && !(parkImg.complete && parkImg.naturalWidth)) { say('駐車場の画像を読み込めていません。電波のある所で、ページを読み込み直してください。', true); return false; }
   return true;
 }
@@ -279,8 +311,8 @@ $('#newBtn').addEventListener('click', () => {
 // ---------- 画面の切りかえ ----------
 function syncKind() {
   const k = radio('kind');
-  ['open', 'new', 'park'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
-  $('#photoBox').hidden = k === 'park';
+  ['open', 'new', 'park', 'cal'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
+  $('#photoBox').hidden = k === 'park' || k === 'cal';
   $('#photoPosWrap').hidden = !photo;
 }
 function showTab() {
@@ -294,7 +326,7 @@ function showTab() {
 addEventListener('hashchange', showTab);
 $('#kinds').addEventListener('change', () => { say(''); syncKind(); saveDraft(); changed(); });
 $('#fmts').addEventListener('change', () => { saveDraft(); changed(); });
-['#f-date', '#photoPos', '#f-product', '#f-badge'].forEach(sel => $(sel).addEventListener('input', () => { syncKind(); saveDraft(); changed(); }));
+['#f-date', '#photoPos', '#f-product', '#f-badge', '#f-calmonth'].forEach(sel => $(sel).addEventListener('input', () => { syncKind(); saveDraft(); changed(); }));
 $$('input[name=pos]').forEach(el => el.addEventListener('change', () => { saveDraft(); changed(); }));
 
 // 内容に触ったら、時間を計りはじめる
@@ -317,7 +349,7 @@ function paintFeedInfo(state) {
 }
 async function refreshFeed() {
   const [f, state] = await fetchFeed(data);
-  if (f) { data = f; paintPhrases(); paintProducts(); saveDraft(); changed(); }
+  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); saveDraft(); changed(); }
   paintFeedInfo(state);
 }
 addEventListener('online', () => { flushLogs().then(() => paintFeedInfo()); refreshFeed(); });
@@ -326,6 +358,6 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 // 電波がないときのために、画面のファイルを端末に保存する
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-paintPhrases(); paintProducts(); syncKind(); paintLog(); paintFeedInfo();
+paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintLog(); paintFeedInfo();
 refreshFeed(); flushLogs(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());

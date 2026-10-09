@@ -2,9 +2,13 @@
 // 開いた本人の権限でシートを読み書きするので、シートを共有されていない人は書けない。
 // このプロジェクトには、秘密の情報を置かない(設定欄は SHEET_ID と APP_URL だけ)。
 
-function doGet() {
+function doGet(e) {
   const t = HtmlService.createTemplateFromFile('admin');
   t.appUrl = appUrl_();
+  // アプリのお知らせの「確認する」から開いたときは、カレンダーのその月を直接開く
+  const p = (e && e.parameter) || {};
+  t.startTab = ['phrases', 'products', 'settings', 'calendar', 'logs', 'more'].includes(p.tab) ? p.tab : 'phrases';
+  t.startMonth = /^\d{4}-\d{2}$/.test(p.month || '') ? p.month : '';
   return t.evaluate()
     .setTitle('投稿ノート 登録・確認')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
@@ -38,7 +42,7 @@ function whoAmI() {
 
 function state_(me) {
   const book = book_();
-  const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars') };
+  const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars'), reservations: readTable_('reservations') };
   const { feed, problems } = buildFeed(tables, '', null);
   let canEdit = false;
   try { canEdit = book.getOwner().getEmail() === me || book.getEditors().some(u => u.getEmail() === me); } catch (e) { canEdit = false; }
@@ -49,8 +53,24 @@ function state_(me) {
     me, canEdit, version: feed.version, appUrl: appUrl_(), sheetUrl: book.getUrl(),
     phrases: tables.phrases.filter(r => r.id).map(r => pick(r, ['id', 'cat', 'text', 'order'])),
     products: tables.products.filter(r => r.id).map(r => pick(r, ['id', 'name', 'desc', 'color', 'order'])),
-    settings, problems, logs: logSummary(readTable_('logs'), 200)
+    settings, problems, logs: logSummary(readTable_('logs'), 200),
+    calendars: tables.calendars.filter(r => /^\d{4}-\d{2}$/.test(r.month || '')).map(r => ({
+      month: r.month, days: parseDays(r.days || '', r.month) || {}, note: r.note || '', state: r.state || '未確認', confirmedAt: r.confirmedAt || '', confirmedBy: r.confirmedBy || ''
+    })),
+    // 月ごとの、いちばん新しい予約
+    reservations: latestReservations_(tables.reservations),
+    calendarState: feed.calendarState, schedule: feed.settings.schedule, regular: feed.settings.regular, firstUse: feed.settings.firstUse, postTo: feed.settings.postTo
   };
+}
+
+function latestReservations_(rows) {
+  const out = {};
+  rows.filter(r => r.id && r.month).forEach(r => {
+    if (!out[r.month] || (r.createdAt || '') >= (out[r.month].createdAt || '')) {
+      out[r.month] = { id: r.id, state: r.state, postTo: r.postTo, postDate: r.postDate, publishedAt: r.publishedAt, mediaId: r.mediaId, lastError: r.lastError, createdAt: r.createdAt };
+    }
+  });
+  return out;
 }
 
 // 保存の共通の流れ:ロック → 版番号を比べる → 書く → 版番号を上げる → 新しい内容を返す
@@ -73,19 +93,6 @@ function mutate_(baseVersion, fn) {
   } finally { lock.releaseLock(); }
 }
 
-// 1つの行の、決まった列だけを書きかえる
-function setCells_(key, row, values) {
-  const sh = sheet_(key), cols = SHEETS[key].cols.map(c => c[0]);
-  Object.keys(values).forEach(k => {
-    const c = cols.indexOf(k);
-    if (c >= 0) sh.getRange(row, c + 1).setValue(String(values[k]));
-  });
-}
-function findRow_(key, id) {
-  const r = readTable_(key).find(x => x.id === id);
-  if (!r) throw new Error('その行が見つかりません。読み直してください。');
-  return r.row;
-}
 function nextOrder_(key) {
   return readTable_(key).reduce((m, r) => Math.max(m, +r.order || 0), 0) + 1;
 }
@@ -147,4 +154,62 @@ function seedExamples(kind, baseVersion) {
     } else return { error: '種類がちがいます。' };
     return { message: '例を入れました。「例」の印がついています。直すと印が消えます。' };
   });
+}
+
+// ---------- 営業カレンダー ----------
+
+// カレンダーの行を書く(なければ足す)
+function upsertCalendar_(value, state, by) {
+  const now = nowText_(), row = readTable_('calendars').find(r => r.month === value.month);
+  const vals = { month: value.month, days: value.daysText, note: value.note, state, confirmedAt: state === '確認済み' ? now : '', confirmedBy: state === '確認済み' ? by : '' };
+  if (row) setCells_('calendars', row.row, vals); else appendRows_('calendars', [vals]);
+}
+
+// その月の、まだ生きている予約を取り消す。返り値は取り消した数
+function cancelLiveReservations_(month) {
+  let n = 0;
+  readTable_('reservations').filter(r => r.month === month && LIVE_RES.includes(r.state)).forEach(r => {
+    setCells_('reservations', r.row, { state: '取り消し', ticket: '', updatedAt: nowText_() }); n++;
+  });
+  return n;
+}
+
+// 途中まで保存する(まだ確認しない)。確認ずみの月を直したときは、確認と予約を取り消す
+function saveCalendar(input, baseVersion) {
+  const c = cleanCalendar(input);
+  if (c.error) return { error: c.error };
+  return mutate_(baseVersion, () => {
+    const before = readTable_('calendars').find(r => r.month === c.value.month);
+    const wasOk = before && before.state === '確認済み';
+    upsertCalendar_(c.value, '未確認', '');
+    const n = cancelLiveReservations_(c.value.month);
+    return { message: wasOk || n ? '保存しました。日にちを変えたので、確認と予約を取り消しました。もう一度「この内容でOK」を押してください。' : '途中まで保存しました。まだ確認ずみではありません。' };
+  });
+}
+
+// 「この内容でOK」。カレンダーを確認済みにし、予約の行を作る。
+// 画像は、このあと画面から公開窓口に送る(使い捨ての合言葉 ticket を返す)
+function confirmCalendar(input, image, baseVersion) {
+  const c = cleanCalendar(input);
+  if (c.error) return { error: c.error };
+  if (!image || !(+image.size > 0 && +image.size < 8 * 1024 * 1024) || !/^[0-9a-f]{64}$/.test(image.hash || '')) return { error: '画像を作れませんでした。読み直して、もう一度押してください。' };
+  let made = null;
+  const r = mutate_(baseVersion, () => {
+    const me = Session.getActiveUser().getEmail();
+    upsertCalendar_(c.value, '確認済み', me);
+    cancelLiveReservations_(c.value.month);
+    const settings = {};
+    readTable_('settings').forEach(x => { settings[x.key] = x.value; });
+    const id = newId_(), ticket = Utilities.getUuid().replace(/-/g, '');
+    const postDate = postDateFor(c.value.month, settings.postDay);
+    appendRows_('reservations', [{
+      id, month: c.value.month, postTo: settings.postTo === 'story' ? 'story' : 'feed', postDate, state: '確認済み',
+      imagePath: imagePathFor(c.value.month, id), imageSize: String(image.size), imageHash: image.hash, tries: '0',
+      createdAt: nowText_(), updatedAt: nowText_(), ticket
+    }]);
+    made = { resId: id, ticket, postDate };
+    return { message: `確認ずみにしました。${+postDate.slice(5, 7)}月${+postDate.slice(8)}日の${settings.postHour || 12}時台に投稿する予約を作りました。` };
+  });
+  if (r.ok && made) Object.assign(r, made);
+  return r;
 }

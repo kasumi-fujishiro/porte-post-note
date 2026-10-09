@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const ctx = vm.createContext({ console });
-for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js']) {
+for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js']) {
   vm.runInContext(readFileSync(new URL(`../gas/core/${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
 const G = name => vm.runInContext(name, ctx);
@@ -125,6 +125,22 @@ export const gasCases = [
   ['例:ひとこと8件、商品3件。価格は入っていない', eq => {
     eq(G('EXAMPLE_PHRASES').length, 8); eq(G('EXAMPLE_PRODUCTS').length, 3);
     eq(G('EXAMPLE_PHRASES').every(([c, t]) => G('cleanPhrase')({ cat: c, text: t }).error === ''), true);
+  }],
+  // ---------- カレンダーの確認と予約 ----------
+  ['予約:11月の分は、10月25日に投稿する。12月の分は11月25日、1月の分は前の年の12月25日', eq => {
+    eq(G('postDateFor')('2026-11', 25), '2026-10-25'); eq(G('postDateFor')('2026-12', '25'), '2026-11-25'); eq(G('postDateFor')('2027-01', 25), '2026-12-25');
+  }],
+  ['予約:画像の場所は calendar/月-予約ID.jpg', eq => eq(G('imagePathFor')('2026-11', 'Ab12-cd'), 'calendar/2026-11-ab12cd.jpg')],
+  ['確認:日にちとひとことを検査する。価格はだめ', eq => {
+    const c = G('cleanCalendar');
+    eq(c({ month: '2026-11', days: { 23: 's', 2: 'c' }, note: ' 23日は営業します ' }).value.daysText, '2:c,23:s');
+    eq(c({ month: '2026-11', days: { 31: 'c' } }).error !== '', true);
+    eq(c({ month: '2026-11', days: {}, note: '500円' }).error.includes('価格'), true);
+    eq(c({ month: '11月', days: {} }).error !== '', true);
+  }],
+  ['配信:投稿済みの予約がある確認済みの月は、posted になる', eq => {
+    const st = G('withPosted')({ '2026-11': 'confirmed', '2026-12': 'unconfirmed' }, [{ month: '2026-11', state: '投稿済み' }, { month: '2026-12', state: '投稿済み' }]);
+    eq(st['2026-11'], 'posted'); eq(st['2026-12'], 'unconfirmed');
   }],
   ['記録:1分30件・1日300件をこえた分は受けつけない', eq => {
     const a = G('allowedCount');

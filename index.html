@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=10">
-<script type="module" src="js/app.js?v=10"></script>
+<link rel="stylesheet" href="css/style.css?v=11">
+<script type="module" src="js/app.js?v=11"></script>
 </head>
 <body>
 <div class="app">
@@ -29,6 +29,11 @@
     右上(または右下)の「…」から「ブラウザで開く」をえらんで、SafariかChromeで開いてください。
   </div>
 
+  <div class="notice" id="notice" role="status" hidden>
+    <p id="noticeText"></p>
+    <div class="row"><button type="button" class="primary" id="noticeGo">営業日を確認する(お店の人用)</button></div>
+  </div>
+
   <!-- ===== つくる ===== -->
   <main class="grid" id="tab-make">
     <section aria-labelledby="h-kind">
@@ -37,7 +42,7 @@
         <label><input type="radio" name="kind" id="kind-open" value="open" checked><b>営業中</b><small>ショーケースの写真で、今日も開いていることを知らせる</small></label>
         <label><input type="radio" name="kind" id="kind-new" value="new"><b>新作・季節</b><small>登録してある商品をえらぶ</small></label>
         <label><input type="radio" name="kind" id="kind-park" value="park"><b>駐車場</b><small>お店で決めた案内の画像を出す</small></label>
-        <label class="soon"><input type="radio" name="kind" id="kind-cal" value="cal" disabled><b>営業カレンダー(準備中)</b><small>確認ずみのカレンダーを、ここで保存できるようにします</small></label>
+        <label id="kindCalWrap"><input type="radio" name="kind" id="kind-cal" value="cal"><b id="kindCalName">営業カレンダー</b><small id="kindCalNote">確認ずみの月の画像を保存する</small></label>
       </div>
     </section>
 
@@ -72,6 +77,11 @@
         <div class="field"><label for="f-product">商品</label><select id="f-product"></select></div>
         <div class="field"><label for="f-badge">ラベル</label>
           <select id="f-badge"><option>NEW</option><option>季節限定</option><option>本日のおすすめ</option><option value="">なし</option></select></div>
+      </div>
+
+      <div class="stack" id="fs-cal" hidden>
+        <div class="field"><label for="f-calmonth">何月の分</label><select id="f-calmonth"></select></div>
+        <p class="hint">お店の人が確認した月だけが出ます。日にちを変えるときは、お店の人用のページで直してください。</p>
       </div>
 
       <div class="stack" id="fs-park" hidden>

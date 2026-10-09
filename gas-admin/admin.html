@@ -3,7 +3,7 @@
 <head>
 <base target="_top">
 <meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
 <link rel="stylesheet" href="<?= appUrl ?>css/style.css">
 <style>
   .admin-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -23,6 +23,10 @@
   .aibox textarea { min-height: 9em; font-size: 14px; }
   details.box > summary { font-weight: 900; cursor: pointer; min-height: 32px; }
   .readonly button.needs-edit { display: none; }
+  .calstate { border-radius: 10px; padding: 10px 12px; background: var(--chip); font-weight: 700; }
+  .calstate.ok { background: var(--ok-bg, #DDEEDF); }
+  .stage { padding: 8px; }
+  .stage canvas { max-height: 56vh; }
 </style>
 </head>
 <body>
@@ -32,6 +36,11 @@
     <a class="back" href="<?= appUrl ?>">← アプリに戻る</a>
   </header>
   <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+  <div class="notice" id="notice" role="status" hidden>
+    <span class="pill" id="noticeTag" hidden></span>
+    <p id="noticeText"></p>
+    <div class="row"><button type="button" class="primary" id="noticeGo">営業日を確認する</button></div>
+  </div>
   <p class="hint" id="loading">読みこんでいます…(初めてのときは、少し時間がかかります)</p>
 
   <div id="noaccess" class="box stack" hidden>
@@ -43,7 +52,7 @@
   <div id="main" hidden>
     <p class="warn" id="readonlyNote" hidden>このアカウントは、シートを見ることはできますが、編集はできません。登録するには、持ち主に「編集者」として共有してもらってください。</p>
     <nav class="tabs" aria-label="登録の画面の切りかえ" style="margin-bottom:14px">
-      <a href="#phrases" data-tab="phrases">ひとこと</a><a href="#products" data-tab="products">商品</a><a href="#settings" data-tab="settings">お店の設定</a><a href="#logs" data-tab="logs">作業時間</a><a href="#more" data-tab="more">そのほか</a>
+      <a href="#phrases" data-tab="phrases">ひとこと</a><a href="#products" data-tab="products">商品</a><a href="#calendar" data-tab="calendar">カレンダー</a><a href="#settings" data-tab="settings">お店の設定</a><a href="#logs" data-tab="logs">作業時間</a><a href="#more" data-tab="more">そのほか</a>
     </nav>
 
     <!-- ===== ひとこと ===== -->
@@ -88,6 +97,39 @@
         <textarea id="ai-product" readonly aria-label="AIに頼む文"></textarea>
         <div class="row"><button type="button" data-copy="ai-product">この文をコピー</button></div>
       </div>
+    </section>
+
+    <!-- ===== 営業カレンダー ===== -->
+    <section class="stack" id="tab-calendar" hidden>
+      <h2>営業カレンダー</h2>
+      <div class="row">
+        <div class="field grow"><label for="c-month">何月の分</label><select id="c-month"></select></div>
+      </div>
+      <p class="calstate" id="c-state"></p>
+      <div class="field"><span id="l-cgrid">定休日はあらかじめ入っています。変わる日だけタップしてください(1回で「お休み」、2回で「時間変更」、3回で「営業」)。</span>
+        <div class="calgrid" id="c-grid" role="group" aria-labelledby="l-cgrid"></div>
+        <div class="legend"><span><i class="lg c"></i>お休み</span><span><i class="lg s"></i>時間変更</span><span><i class="lg"></i>営業</span></div>
+      </div>
+      <p id="c-count" style="font-weight:700"></p>
+      <div class="row"><button type="button" class="small needs-edit" id="c-reset">定休日どおりに戻す</button></div>
+      <div class="field"><label for="c-note">ひとこと(40文字まで。例:23日は営業します)</label><input type="text" id="c-note" maxlength="60"></div>
+      <div class="seg" id="c-fmts" role="radiogroup" aria-label="大きさ">
+        <label><input type="radio" name="cfmt" value="feed" checked>フィード投稿</label><label><input type="radio" name="cfmt" value="story">ストーリーズ</label><label><input type="radio" name="cfmt" value="a4">店頭掲示 A4</label>
+      </div>
+      <div class="stage"><canvas id="c-cv" width="1080" height="1350" aria-label="カレンダーの画像のプレビュー"></canvas></div>
+      <div class="row">
+        <button type="button" class="primary big needs-edit" id="c-ok">この内容でOK</button>
+        <button type="button" class="needs-edit" id="c-save">途中まで保存する</button>
+      </div>
+      <p class="hint" id="c-okhint"></p>
+      <div class="box stack">
+        <h3 style="margin:0">手で投稿するとき</h3>
+        <p class="hint">自動の投稿が止まったときなどは、画像を保存して、Instagramのアプリで予約投稿してください。</p>
+        <div class="row"><button type="button" id="c-download">画像を保存する</button><button type="button" class="small" id="c-showimg">うまく保存できないとき</button></div>
+        <img id="c-img" alt="保存用の画像" hidden style="max-width:100%;border-radius:6px">
+      </div>
+      <div class="row"><button type="button" class="small" id="noticeTest">お知らせの表示を試す</button>
+        <span class="seg" id="simModes" role="radiogroup" aria-label="試す日" hidden><label><input type="radio" name="sim" value="due" checked>知らせる時期</label><label><input type="radio" name="sim" value="late">投稿する日を過ぎた</label></span></div>
     </section>
 
     <!-- ===== お店の設定 ===== -->
@@ -140,8 +182,13 @@
   </div>
 </div>
 
-<script>
-(() => {
+<script type="module">
+const APP = '<?= appUrl ?>', START_TAB = '<?= startTab ?>', START_MONTH = '<?= startMonth ?>';
+const { draw } = await import(APP + 'js/draw.js?v=11');
+const { FORMATS } = await import(APP + 'js/data.js?v=11');
+const CAL = await import(APP + 'js/calendar.js?v=11');
+const { CONFIG } = await import(APP + 'config.js?v=11');
+{
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const COLORS = { pink: ['ピンク', '#E4517A'], brown: ['茶色', '#8A5A36'], green: ['緑', '#7FB23A'], yellow: ['黄色', '#E0A81C'], purple: ['むらさき', '#8E63C0'] };
@@ -174,7 +221,7 @@
     $('#main').hidden = false;
     document.body.classList.toggle('readonly', !S.canEdit); $('#readonlyNote').hidden = S.canEdit;
     $('#me').textContent = S.me; $('#sheetLink').href = S.sheetUrl;
-    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems();
+    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems(); paintMonths(); loadMonth(); updateNotice();
   }
   const exTag = x => (x.ex ? ' <span class="tagex">例</span>' : '');
   const hideBtn = (kind, id, hidden) => `<button type="button" class="small needs-edit" data-hide="${kind}" data-id="${id}" data-to="${hidden ? '0' : '1'}">${hidden ? '戻す' : 'しまう'}</button>`;
@@ -295,14 +342,131 @@
     try { await navigator.clipboard.writeText(tsv); say('コピーしました。表計算ソフトに貼り付けられます。'); } catch { say('コピーできませんでした。', true); }
   });
 
+  // ---------- 営業カレンダー ----------
+  const pad2 = n => String(n).padStart(2, '0');
+  const today = new Date();
+  const keyOf = (y, m) => `${y}-${pad2(m)}`;
+  let cal = null; // いま編集している月 { month, y, m, days, note }
+  function paintMonths() {
+    const sel = $('#c-month'), keep = sel.value || START_MONTH, opts = [];
+    for (let i = 0; i <= 3; i++) { const d = new Date(today.getFullYear(), today.getMonth() + i, 1); opts.push(keyOf(d.getFullYear(), d.getMonth() + 1)); }
+    if (START_MONTH && !opts.includes(START_MONTH)) opts.push(START_MONTH);
+    sel.innerHTML = opts.map(k => `<option value="${k}">${+k.slice(0, 4)}年${+k.slice(5)}月</option>`).join('');
+    sel.value = opts.includes(keep) ? keep : opts[1];
+  }
+  function loadMonth() {
+    const k = $('#c-month').value, y = +k.slice(0, 4), m = +k.slice(5), row = S.calendars.find(c => c.month === k);
+    cal = { month: k, y, m, days: row ? { ...row.days } : CAL.regularMap(y, m, S.regular || []), note: row ? row.note : '', dirty: false };
+    $('#c-note').value = cal.note;
+    paintGrid(); paintCalState(); drawCal();
+  }
+  function paintGrid() {
+    const { first, n } = CAL.monthInfo(cal.y, cal.m), g = $('#c-grid'); g.textContent = '';
+    WEEK.forEach(w => { const el = document.createElement('div'); el.className = 'wd'; el.textContent = w; el.setAttribute('aria-hidden', 'true'); g.append(el); });
+    for (let i = 0; i < first; i++) g.append(document.createElement('span'));
+    for (let d = 1; d <= n; d++) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = d; b.dataset.d = d; const s = cal.days[d] || ''; b.dataset.s = s;
+      b.setAttribute('aria-label', `${cal.m}月${d}日(${WEEK[(first + d - 1) % 7]}) ${s === 'c' ? 'お休み' : s === 's' ? '時間変更' : '営業'}`); g.append(b);
+    }
+    const { closed, changed } = CAL.countDays(cal.days);
+    $('#c-count').textContent = `${cal.m}月は、お休み ${closed}日${changed ? `、時間変更 ${changed}日` : ''}です。`;
+  }
+  function paintCalState() {
+    const row = S.calendars.find(c => c.month === cal.month), res = (S.reservations || {})[cal.month], el = $('#c-state');
+    const fmtDate = d => d ? `${+d.slice(5, 7)}月${+d.slice(8, 10)}日` : '';
+    let t = '';
+    if (cal.dirty) t = '日にちやひとことを変えました。まだ保存していません。「この内容でOK」か「途中まで保存する」を押してください。';
+    else if (row && row.state === '確認済み') {
+      t = `確認ずみです(${row.confirmedAt.slice(0, 16)})。`;
+      if (res && res.state === '投稿済み') t += 'Instagramに投稿しました。';
+      else if (res && res.state === '確認済み') t += `${fmtDate(res.postDate)}の${S.schedule.postHour}時台に、${res.postTo === 'story' ? 'ストーリーズ' : 'フィード'}へ投稿する予約があります。` + (res.publishedAt ? '' : '(画像を公開する準備中)');
+      else if (res && res.state) t += `予約の状態:${res.state}。` + (res.lastError ? `(${res.lastError})` : '');
+    } else t = row ? 'まだ確認していません(途中まで保存してあります)。' : 'まだ確認していません。';
+    el.textContent = t; el.classList.toggle('ok', !!(row && row.state === '確認済み' && !cal.dirty));
+    $('#c-okhint').textContent = `OKを押すと、${S.postTo === 'story' ? 'ストーリーズ' : 'フィード'}の大きさで画像を作り、投稿の予約をします。`;
+  }
+  const calFmt = () => (document.querySelector('input[name=cfmt]:checked') || {}).value || 'feed';
+  function calState(fmt) {
+    return { kind: 'cal', theme: S.settings.theme || 'pink', hours: S.settings.hours || '', cal: { ...CAL.monthInfo(cal.y, cal.m), map: cal.days, note: cal.note.trim() } };
+  }
+  async function drawCal() {
+    const cv = $('#c-cv');
+    draw(cv, FORMATS[calFmt()], calState());
+    if (document.fonts) { await document.fonts.load('40px "Potta One"', '月の営業日0123456789').catch(() => {}); await document.fonts.load('40px "Yusei Magic"', '年日月火水木金土お休み時間変更0123456789' + cal.note + (S.settings.hours || '')).catch(() => {}); draw(cv, FORMATS[calFmt()], calState()); }
+  }
+  // 指定の大きさで、別のキャンバスに描いてJPEGにする
+  async function calBlob(fmt) {
+    const c = document.createElement('canvas'); draw(c, FORMATS[fmt], calState());
+    return new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+  }
+  $('#c-month').addEventListener('change', () => { if (cal && cal.dirty && !confirm('保存していない変更があります。月を切りかえると、変更は消えます。よいですか?')) { $('#c-month').value = cal.month; return; } loadMonth(); say(''); });
+  $('#c-grid').addEventListener('click', e => {
+    const b = e.target.closest('button[data-d]'); if (!b || !S.canEdit) return;
+    const d = +b.dataset.d, s = CAL.nextState(cal.days[d]);
+    if (s) cal.days[d] = s; else delete cal.days[d];
+    cal.dirty = true; paintGrid(); paintCalState(); drawCal();
+  });
+  $('#c-reset').addEventListener('click', () => { cal.days = CAL.regularMap(cal.y, cal.m, S.regular || []); cal.dirty = true; paintGrid(); paintCalState(); drawCal(); });
+  $('#c-note').addEventListener('input', e => { cal.note = e.target.value; cal.dirty = true; paintCalState(); drawCal(); });
+  $('#c-fmts').addEventListener('change', drawCal);
+  $('#c-save').addEventListener('click', async () => { if (await call('saveCalendar', { month: cal.month, days: cal.days, note: cal.note })) loadMonth(); });
+  $('#c-ok').addEventListener('click', async () => {
+    const btn = $('#c-ok'); btn.disabled = true; say('画像を作っています…');
+    try {
+      const fmt = S.postTo === 'story' ? 'story' : 'feed', blob = await calBlob(fmt), buf = await blob.arrayBuffer();
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(b => b.toString(16).padStart(2, '0')).join('');
+      const r = await run('confirmCalendar', { month: cal.month, days: cal.days, note: cal.note }, { size: blob.size, hash }, S.version);
+      if (r.state) S = r.state;
+      if (!r.ok) { paint(); say(r.error, true); return; }
+      say(r.message + ' 画像を送っています…');
+      // 画像を、使い捨ての合言葉と一緒に公開窓口へ送る
+      let b64 = ''; const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 32768) b64 += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+      b64 = btoa(b64);
+      let sent = null;
+      try { sent = await (await fetch(CONFIG.feedUrl, { method: 'POST', body: JSON.stringify({ type: 'calendarImage', resId: r.resId, ticket: r.ticket, image: b64 }) })).json(); } catch (e) { sent = null; }
+      S = await run('getState'); paint();
+      if (sent && sent.ok) say(r.message + (sent.published ? ' 画像も公開しました。' : ' 画像は受けとりました。公開は次の自動実行で行います。'));
+      else say(r.message + ' ただ、画像を送れませんでした。もう一度「この内容でOK」を押してください。' + (sent && sent.error ? `(${sent.error})` : ''), true);
+    } catch (e) {
+      say('うまくいきませんでした。もう一度押してください。(' + ((e && e.message) || e) + ')', true);
+    } finally { btn.disabled = false; }
+  });
+  async function fileFor(fmt) { return new File([await calBlob(fmt)], `calendar_${cal.month}_${fmt}.jpg`, { type: 'image/jpeg' }); }
+  $('#c-download').addEventListener('click', async () => {
+    const f = await fileFor(calFmt()), url = URL.createObjectURL(f), a = document.createElement('a');
+    a.href = url; a.download = f.name; a.target = '_blank'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    say('保存しました。見つからないときは「うまく保存できないとき」を押してください。');
+  });
+  $('#c-showimg').addEventListener('click', async () => { const img = $('#c-img'); img.src = URL.createObjectURL(await calBlob(calFmt())); img.hidden = false; say('下の画像を長押し(パソコンは右クリック)して保存してください。'); });
+
+  // ---------- 確認のお知らせ ----------
+  let sim = false;
+  function updateNotice() {
+    const now = sim ? CAL.simulatedNow(today, S.schedule, (document.querySelector('input[name=sim]:checked') || {}).value) : today;
+    const n = CAL.noticeFor(now, S.schedule, S.calendarState, S.firstUse), box = $('#notice');
+    const show = ['due', 'ok', 'late'].includes(n.state);
+    box.hidden = !show; $('#noticeTag').hidden = !sim; $('#noticeTag').textContent = `表示テスト中:今日を ${now.getMonth() + 1}月${now.getDate()}日 として表示しています`;
+    $('#noticeTest').textContent = sim ? '表示テストをやめる' : 'お知らせの表示を試す'; $('#simModes').hidden = !sim;
+    if (!show) { if (sim) say(`${now.getMonth() + 1}月${now.getDate()}日として見ると、お知らせは出ません(${n.state === 'done' ? '投稿済み' : 'まだ早い'})。`); return; }
+    const P = `${n.P.getMonth() + 1}月${n.P.getDate()}日`; box.dataset.state = n.state; box.dataset.key = n.key;
+    $('#noticeText').innerHTML = n.state === 'ok' ? `${n.tm}月の営業日は確認ずみです。<small>${P}の${S.schedule.postHour}時台に、自動で投稿します。</small>`
+      : n.state === 'late' ? `${n.tm}月の営業日が、まだ確認されていません。<small>投稿する日(${P})を過ぎています。確認すると、1時間以内に投稿します。</small>`
+        : `${n.tm}月の営業日を確認してください。<small>${n.days === 0 ? `今日(${P})` : `${P}(あと${n.days}日)`}の${S.schedule.postHour}時台に投稿する予定です。</small>`;
+    $('#noticeGo').textContent = n.state === 'ok' ? 'カレンダーを見る' : '営業日を確認する';
+  }
+  $('#noticeGo').addEventListener('click', () => { const k = $('#notice').dataset.key; if (![...$('#c-month').options].some(o => o.value === k)) $('#c-month').add(new Option(`${+k.slice(0, 4)}年${+k.slice(5)}月`, k)); $('#c-month').value = k; loadMonth(); showTab('calendar'); });
+  $('#noticeTest').addEventListener('click', () => { sim = !sim; say(''); updateNotice(); window.scrollTo(0, 0); });
+  $('#simModes').addEventListener('change', () => { say(''); updateNotice(); });
+
   // ---------- 画面の切りかえ ----------
-  const TABS = ['phrases', 'products', 'settings', 'logs', 'more'];
+  const TABS = ['phrases', 'products', 'calendar', 'settings', 'logs', 'more'];
   function showTab(t) {
     TABS.forEach(n => { $('#tab-' + n).hidden = n !== t; const a = document.querySelector(`[data-tab="${n}"]`); if (n === t) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   }
   document.querySelector('.tabs').addEventListener('click', e => { const a = e.target.closest('a[data-tab]'); if (!a) return; e.preventDefault(); showTab(a.dataset.tab); say(''); });
 
-  aiPhrase(); aiProduct(); resetPhraseForm(); resetProductForm(); showTab('phrases');
+  aiPhrase(); aiProduct(); resetPhraseForm(); resetProductForm(); showTab(START_TAB || 'phrases');
   const isNoAccess = e => /permission|権限|access|アクセス/i.test(String((e && e.message) || e));
   async function noAccess() {
     $('#loading').hidden = true; $('#noaccess').hidden = false;
@@ -314,7 +478,7 @@
       + '・このブラウザで、Googleのアカウントに2つ以上ログインしていると、うまく動かないことがあります。使うアカウント1つだけでログインし直すか、プライベートブラウズ(シークレットウィンドウ)で開いてください。<br>'
       + '・電波のある所で、開き直してください。<br><span class="hint">(くわしい理由:' + esc((e && e.message) || e) + ')</span>';
   });
-})();
+}
 </script>
 </body>
 </html>

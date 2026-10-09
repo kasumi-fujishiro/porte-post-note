@@ -40,6 +40,16 @@ function setupSheet() {
   const st = readTable_('settings'), have = new Set(st.map(r => r.key));
   const add = SETTING_ROWS.filter(r => !have.has(r[0])).map(([key, value, note]) => ({ key, value, note }));
   appendRows_('settings', add);
+  // 使い始めた日が空なら、今日にする(この日より前に出す予定だった月は、知らせない)
+  const fu = readTable_('settings').find(r => r.key === 'firstUse');
+  if (fu && !fu.value) sheet_('settings').getRange(fu.row, 2).setValue(Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd'));
+
+  // カレンダーの画像の原本を置く、非公開のフォルダ(持ち主だけが見られる)
+  if (!props.getProperty('DRIVE_FOLDER_ID')) {
+    const folder = DriveApp.createFolder('投稿ノート カレンダーの原本');
+    props.setProperty('DRIVE_FOLDER_ID', folder.getId());
+    console.log('ドライブに、フォルダ「投稿ノート カレンダーの原本」を作りました(共有はしません)。');
+  }
   // 例(まだ1行もないときだけ)
   const now = nowText_();
   if (!readTable_('phrases').length) appendRows_('phrases', EXAMPLE_PHRASES.map(([cat, text], i) => ({ id: newId_(), cat, text, order: String(i + 1), hidden: 'FALSE', ex: 'TRUE', updatedAt: now })));

@@ -3,23 +3,24 @@
 // ・版の番号(?v=)つきのファイルは、保存したものを使う(番号が変われば別のファイルになる)
 // ・書体は、一度使ったものを保存しておく
 // 版を上げるときは、VERSION と、下の一覧の ?v= を、index.html と同じ番号にする。
-const VERSION = 'v10';
+const VERSION = 'v11';
 const CACHE = `post-note-${VERSION}`;
 const FONT_CACHE = 'post-note-fonts';
 const SHELL = [
   './',
   'index.html',
   'manifest.json',
-  'css/style.css?v=10',
-  'config.js?v=10',
-  'js/app.js?v=10',
-  'js/data.js?v=10',
-  'js/text.js?v=10',
-  'js/store.js?v=10',
-  'js/draw.js?v=10',
-  'js/feed.js?v=10',
-  'js/logqueue.js?v=10',
-  'images/parking.jpg?v=10'
+  'css/style.css?v=11',
+  'config.js?v=11',
+  'js/app.js?v=11',
+  'js/data.js?v=11',
+  'js/text.js?v=11',
+  'js/store.js?v=11',
+  'js/draw.js?v=11',
+  'js/feed.js?v=11',
+  'js/logqueue.js?v=11',
+  'js/calendar.js?v=11',
+  'images/parking.jpg?v=11'
 ];
 
 self.addEventListener('install', e => {
