@@ -13,13 +13,15 @@ function testMakeReservationNow() {
   const blob = UrlFetchApp.fetch(imageBaseUrl_() + 'tests/assets/sample-feed.jpg').getBlob().setContentType('image/jpeg');
   const bytes = blob.getBytes(), path = `calendar/test-${id}.jpg`;
   githubPutImage_(path, blob, '試しの投稿の画像を置く');
+  // 投稿する日は昨日にする(すぐに投稿の対象になるように)
+  const yesterday = Utilities.formatDate(new Date(Date.now() - 86400000), 'Asia/Tokyo', 'yyyy-MM-dd');
   appendRows_('reservations', [{
-    id, month: 'TEST', postTo: 'feed', postDate: now.slice(0, 10), state: '確認済み', imagePath: path,
+    id, month: 'TEST', postTo: 'feed', postDate: yesterday, state: '確認済み', imagePath: path,
     imageSize: String(bytes.length), imageHash: sha256Hex_(bytes), driveFileId: 'test', tries: '0',
     createdAt: now, updatedAt: now, publishedAt: now
   }]);
   const ok = waitForPublicImage_(imageBaseUrl_() + path, bytes.length, 240);
-  console.log(`試しの予約を作りました(${id})。画像は${ok ? '公開されました' : 'まだ公開されていません(数分待ってください)'}。今日の${settingsMap_().postHour || 12}時を過ぎていれば、hourlyJob で投稿されます。`);
+  console.log(`試しの予約を作りました(${id})。画像は${ok ? '公開されました' : 'まだ公開されていません(数分待ってください)'}。hourlyJob を実行すると(または次の自動実行で)投稿されます。`);
 }
 
 // 「投稿中」で止まった予約を作る(公開を送ったあとの状態)。hourlyJob を実行すると「要確認」になり、投稿されない
@@ -30,7 +32,7 @@ function testStuckPublishing() {
   console.log(`「投稿中」で止まった試しの予約を作りました(${id})。hourlyJob を実行して、「要確認」になることを確かめてください。`);
 }
 
-// 1週間の試し:毎日11時台に試しの予約を作る(12時台の自動実行で投稿される)
+// 1週間の試し:毎日11時台に試しの予約を作る(そのあとの自動実行で投稿される)
 function testStartWeek() {
   testGuard_();
   if (!ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'testMakeReservationNow')) {
