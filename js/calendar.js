@@ -1,5 +1,5 @@
 // 営業カレンダーの計算。画面に触らない(テストできるように)。
-import { pad2, iso } from './text.js?v=9';
+import { pad2, iso } from './text.js?v=10';
 
 export const monthKey = (y, m) => `${y}-${pad2(m)}`;
 

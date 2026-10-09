@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="<?= appUrl ?>css/style.css">
+<style>
+  .admin-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .admin-top h1 { font-size: clamp(20px, 5vw, 26px); margin: 0; font-weight: 900; }
+  .back { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 16px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; text-decoration: none; }
+  .msg { border-radius: 10px; padding: 10px 14px; font-weight: 700; margin-bottom: 12px; }
+  .msg.ok { background: var(--chip); }
+  .msg.err { background: var(--warn-bg); color: var(--warn-ink); }
+  .list { display: grid; gap: 6px; }
+  .item { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--bg); min-width: 0; }
+  .item > div { min-width: 0; overflow-wrap: anywhere; }
+  .item .acts { display: flex; flex-wrap: wrap; gap: 6px; flex: none; justify-content: flex-end; }
+  .group h3 { font-size: 15px; margin: 10px 0 6px; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .counter { font-size: 13px; color: var(--muted); text-align: right; }
+  .aibox { border: 1.5px dashed var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+  .aibox textarea { min-height: 9em; font-size: 14px; }
+  details.box > summary { font-weight: 900; cursor: pointer; min-height: 32px; }
+  .readonly button.needs-edit { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="admin-top">
+    <h1>登録・確認(お店の人用)</h1>
+    <a class="back" href="<?= appUrl ?>">← アプリに戻る</a>
+  </header>
+  <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+  <p class="hint" id="loading">読みこんでいます…(初めてのときは、少し時間がかかります)</p>
+
+  <div id="noaccess" class="box stack" hidden>
+    <h2>このアカウントでは、お店のシートを開けません</h2>
+    <p>いま使っているGoogleアカウント:<b id="meNo"></b></p>
+    <p>登録するには、お店のシートの持ち主に、このアカウントを「編集者」として共有してもらってください。ちがうアカウントで開いているときは、Googleのアカウントを切りかえてから、開き直してください。</p>
+  </div>
+
+  <div id="main" hidden>
+    <p class="warn" id="readonlyNote" hidden>このアカウントは、シートを見ることはできますが、編集はできません。登録するには、持ち主に「編集者」として共有してもらってください。</p>
+    <nav class="tabs" aria-label="登録の画面の切りかえ" style="margin-bottom:14px">
+      <a href="#phrases" data-tab="phrases">ひとこと</a><a href="#products" data-tab="products">商品</a><a href="#settings" data-tab="settings">お店の設定</a><a href="#logs" data-tab="logs">作業時間</a><a href="#more" data-tab="more">そのほか</a>
+    </nav>
+
+    <!-- ===== ひとこと ===== -->
+    <section class="stack" id="tab-phrases">
+      <h2>ひとこと集</h2>
+      <p class="hint">営業中のストーリーズに入れる一言です。ここに登録したものだけが、アプリでえらべます。</p>
+      <div id="phraseList"></div>
+      <div class="row" id="phraseSeed" hidden><button type="button" class="needs-edit" data-seed="phrases">例を入れる</button><span class="hint">雨の日、暑い日などの例が入ります。</span></div>
+      <details class="box" id="phraseHiddenBox" hidden><summary>しまったもの</summary><div class="list" id="phraseHidden"></div></details>
+      <div class="stack box">
+        <h3 id="phraseFormTitle" style="margin:0">ひとことを足す</h3>
+        <div class="field"><label for="p-cat">状況(今あるものからえらぶか、新しく書く)</label><input type="text" id="p-cat" list="catList" placeholder="例:雨の日"><datalist id="catList"></datalist></div>
+        <div class="field"><label for="p-text">ひとこと(40文字まで)</label><input type="text" id="p-text" maxlength="60" placeholder="例:足元にお気をつけてお越しください"><span class="counter" id="p-count"></span></div>
+        <div class="row"><button type="button" class="primary needs-edit" id="p-save">登録する</button><button type="button" id="p-cancel" hidden>やめる</button></div>
+      </div>
+      <div class="aibox">
+        <h3 style="margin:0">AIに頼む文をコピーする</h3>
+        <p class="hint">どんな状況かを書くと、無料のAI(GeminiやChatGPTなど)に貼り付ける文ができます。出てきた案を読んで、使いたいものだけを上の欄に貼って登録してください。</p>
+        <div class="field"><label for="ai-sit">こういう状況</label><input type="text" id="ai-sit" placeholder="例:台風が近づいていて、早めに閉めるかもしれない日"></div>
+        <textarea id="ai-phrase" readonly aria-label="AIに頼む文"></textarea>
+        <div class="row"><button type="button" data-copy="ai-phrase">この文をコピー</button></div>
+      </div>
+    </section>
+
+    <!-- ===== 商品 ===== -->
+    <section class="stack" id="tab-products" hidden>
+      <h2>商品メモ</h2>
+      <p class="hint">新作や季節の商品を、一度だけ登録します。投稿する人は、商品をえらぶだけで済みます。今は出していない商品は、消さずに「しまう」と、次の季節にまた使えます。</p>
+      <div class="list" id="productList"></div>
+      <div class="row" id="productSeed" hidden><button type="button" class="needs-edit" data-seed="products">例を入れる</button><span class="hint">仮の商品が3つ入ります。</span></div>
+      <details class="box" id="productHiddenBox" hidden><summary>しまったもの</summary><div class="list" id="productHidden"></div></details>
+      <div class="stack box">
+        <h3 id="productFormTitle" style="margin:0">商品を足す</h3>
+        <div class="field"><label for="d-name">商品名(30文字まで)</label><input type="text" id="d-name" maxlength="40"></div>
+        <div class="field"><label for="d-desc">ひとこと説明(60文字まで。味や特徴)</label><textarea id="d-desc" rows="2" maxlength="80"></textarea><span class="counter" id="d-count"></span></div>
+        <div class="field"><label for="d-color">色</label><select id="d-color"></select></div>
+        <div class="row"><button type="button" class="primary needs-edit" id="d-save">登録する</button><button type="button" id="d-cancel" hidden>やめる</button></div>
+      </div>
+      <div class="aibox">
+        <h3 style="margin:0">AIに頼む文をコピーする(商品の説明)</h3>
+        <p class="hint">上の欄に商品名と短いメモを入れると、説明を整えてもらう文ができます。AIの答えは、メモにないことが足されていないか読んでから使ってください。</p>
+        <textarea id="ai-product" readonly aria-label="AIに頼む文"></textarea>
+        <div class="row"><button type="button" data-copy="ai-product">この文をコピー</button></div>
+      </div>
+    </section>
+
+    <!-- ===== お店の設定 ===== -->
+    <section class="stack" id="tab-settings" hidden>
+      <h2>お店の設定</h2>
+      <div class="field"><label for="s-hours">営業時間(入れると、営業中とカレンダーの画像に出ます。空でもかまいません)</label><input type="text" id="s-hours" placeholder="例:10:00 – 18:00"></div>
+      <div class="field"><label for="s-theme">営業中の色(カレンダーは、月ごとの季節の色になります)</label><select id="s-theme"></select></div>
+      <div class="field"><span id="l-reg">定休日</span><div class="checks" id="s-regular" role="group" aria-labelledby="l-reg"></div></div>
+      <div class="field"><span>営業カレンダーの日程(毎月)</span>
+        <div class="inline">
+          <select id="s-notice1" aria-label="確認のお知らせを出す日"></select><span>日にお知らせとLINE。</span>
+          <select id="s-notice2" aria-label="もう一度知らせる日"></select><span>日にもう一度LINE。</span>
+          <select id="s-postDay" aria-label="投稿する日"></select><span>日の</span>
+          <select id="s-postHour" aria-label="投稿する時"></select><span>時台に、翌月の分を投稿する。</span>
+        </div>
+      </div>
+      <div class="field"><span id="l-postto">カレンダーの投稿先</span>
+        <div class="seg" role="radiogroup" aria-labelledby="l-postto">
+          <label><input type="radio" name="postTo" value="feed">フィード</label><label><input type="radio" name="postTo" value="story">ストーリーズ</label>
+        </div>
+      </div>
+      <div class="row"><button type="button" class="primary needs-edit" id="s-save">設定を保存する</button></div>
+    </section>
+
+    <!-- ===== 作業時間 ===== -->
+    <section class="stack" id="tab-logs" hidden>
+      <h2>作業時間の記録(全員の分)</h2>
+      <p class="hint">アプリで内容に触りはじめてから、保存か共有をするまでの秒数です。名前や端末の情報は入っていません。</p>
+      <p class="avg" id="logAvg"></p>
+      <div class="scroll"><table><thead><tr><th>日時</th><th>種類</th><th>大きさ</th><th>秒</th></tr></thead><tbody id="logRows"></tbody></table></div>
+      <div class="row"><button type="button" id="logCopy">表計算ソフトに貼れる形でコピー</button></div>
+    </section>
+
+    <!-- ===== そのほか ===== -->
+    <section class="stack" id="tab-more" hidden>
+      <h2>直してほしい行</h2>
+      <p class="hint">シートを直接直して、決まりに合わなくなった行です。この行はアプリに出ていません。シートを開いて直してください。</p>
+      <div class="list" id="problems"></div>
+      <h2>登録できる人</h2>
+      <p>登録できる人は、<b>お店のシートの共有</b>だけで決まります。アプリの中に名簿はありません。</p>
+      <ol class="hint">
+        <li>下の「シートを開く」を押す</li>
+        <li>右上の「共有」を押す</li>
+        <li>足したい人のGoogleアカウント(メールアドレス)を入れ、「<b>編集者</b>」をえらんで送る</li>
+        <li>外すときは、同じ画面で、その人の右の「編集者」→「アクセス権を削除」</li>
+      </ol>
+      <div class="row"><a class="back" id="sheetLink" href="#">シートを開く</a></div>
+      <p class="hint">いま使っているGoogleアカウント:<b id="me"></b></p>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const COLORS = { pink: ['ピンク', '#E4517A'], brown: ['茶色', '#8A5A36'], green: ['緑', '#7FB23A'], yellow: ['黄色', '#E0A81C'], purple: ['むらさき', '#8E63C0'] };
+  const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+  const KIND = { open: '営業中', new: '新作・季節', park: '駐車場', cal: '営業カレンダー' };
+  const FMT = { story: 'ストーリーズ', feed: 'フィード投稿', a4: '店頭掲示 A4' };
+  let S = null, editPhrase = '', editProduct = '';
+
+  // GASの関数を呼ぶ
+  const run = (fn, ...args) => new Promise((ok, ng) => google.script.run.withSuccessHandler(ok).withFailureHandler(ng)[fn](...args));
+  function say(text, err) { const m = $('#msg'); m.hidden = !text; m.textContent = text || ''; m.className = 'msg ' + (err ? 'err' : 'ok'); if (text) m.scrollIntoView({ block: 'nearest' }); }
+  async function call(fn, ...args) {
+    document.querySelectorAll('button').forEach(b => { b.dataset.was = b.disabled; b.disabled = true; });
+    try {
+      const r = await run(fn, ...args, S.version);
+      if (r.state) { S = r.state; paint(); }
+      say(r.error || r.message, !!r.error);
+      return !r.error;
+    } catch (e) {
+      say('通信がうまくいきませんでした。電波のある所で、もう一度押してください。', true); return false;
+    } finally { document.querySelectorAll('button').forEach(b => { b.disabled = b.dataset.was === 'true'; }); }
+  }
+
+  // ---------- 画面を描く ----------
+  function paint() {
+    $('#loading').hidden = true;
+    if (S.error === 'noaccess') { $('#noaccess').hidden = false; $('#meNo').textContent = S.me || '(分かりません)'; return; }
+    $('#main').hidden = false;
+    document.body.classList.toggle('readonly', !S.canEdit); $('#readonlyNote').hidden = S.canEdit;
+    $('#me').textContent = S.me; $('#sheetLink').href = S.sheetUrl;
+    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems();
+  }
+  const exTag = x => (x.ex ? ' <span class="tagex">例</span>' : '');
+  const hideBtn = (kind, id, hidden) => `<button type="button" class="small needs-edit" data-hide="${kind}" data-id="${id}" data-to="${hidden ? '0' : '1'}">${hidden ? '戻す' : 'しまう'}</button>`;
+  function paintPhrases() {
+    const shown = S.phrases.filter(p => !p.hidden), hidden = S.phrases.filter(p => p.hidden);
+    const cats = [...new Set(shown.map(p => p.cat))];
+    $('#phraseList').innerHTML = cats.map(c => `<div class="group"><h3>${esc(c)}</h3><div class="list">${shown.filter(p => p.cat === c).map(p =>
+      `<div class="item"><div>${esc(p.text)}${exTag(p)}</div><div class="acts"><button type="button" class="small needs-edit" data-editp="${p.id}">直す</button>${hideBtn('phrases', p.id, false)}</div></div>`).join('')}</div></div>`).join('')
+      || '<p class="hint">ひとことがまだありません。</p>';
+    $('#phraseSeed').hidden = shown.length > 0;
+    $('#phraseHiddenBox').hidden = !hidden.length;
+    $('#phraseHidden').innerHTML = hidden.map(p => `<div class="item"><div><b>${esc(p.cat)}</b>:${esc(p.text)}</div><div class="acts">${hideBtn('phrases', p.id, true)}</div></div>`).join('');
+    $('#catList').innerHTML = [...new Set(S.phrases.map(p => p.cat))].map(c => `<option value="${esc(c)}">`).join('');
+  }
+  function paintProducts() {
+    const item = (p, hidden) => `<div class="item"><div><b><span class="dot" style="background:${(COLORS[p.color] || COLORS.pink)[1]}"></span>${esc(p.name)}</b>${exTag(p)}<br><span class="hint">${esc(p.desc || '説明なし')}</span></div>
+      <div class="acts">${hidden ? '' : `<button type="button" class="small needs-edit" data-editd="${p.id}">直す</button>`}${hideBtn('products', p.id, hidden)}</div></div>`;
+    const shown = S.products.filter(p => !p.hidden), hidden = S.products.filter(p => p.hidden);
+    $('#productList').innerHTML = shown.map(p => item(p, false)).join('') || '<p class="hint">商品がまだありません。</p>';
+    $('#productSeed').hidden = shown.length > 0;
+    $('#productHiddenBox').hidden = !hidden.length;
+    $('#productHidden').innerHTML = hidden.map(p => item(p, true)).join('');
+  }
+  function paintSettings() {
+    const st = S.settings;
+    $('#s-hours').value = st.hours || ''; $('#s-theme').value = st.theme || 'pink';
+    const reg = String(st.regular || '').split(',').filter(Boolean).map(Number);
+    document.querySelectorAll('#s-regular input').forEach(el => { el.checked = reg.includes(+el.value); });
+    ['notice1', 'notice2', 'postDay', 'postHour'].forEach(k => { $('#s-' + k).value = st[k] || ''; });
+    document.querySelectorAll('input[name=postTo]').forEach(el => { el.checked = el.value === (st.postTo || 'feed'); });
+  }
+  function paintLogs() {
+    const L = S.logs;
+    $('#logAvg').textContent = L.count ? `${L.count}回の平均は ${L.avg}秒 です。` : 'まだ記録がありません。';
+    $('#logRows').innerHTML = L.rows.map(r => `<tr><td>${esc(r.at)}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc(FMT[r.fmt] || r.fmt)}</td><td>${r.sec}</td></tr>`).join('');
+  }
+  function paintProblems() {
+    $('#problems').innerHTML = S.problems.map(p => `<div class="item"><div><b>シート「${esc(p.sheet)}」の ${p.row}行め</b><br><span class="hint">${esc(p.why)}</span></div></div>`).join('')
+      || '<p class="hint">直してほしい行はありません。</p>';
+  }
+
+  // ---------- ひとこと ----------
+  function resetPhraseForm() { editPhrase = ''; $('#p-cat').value = ''; $('#p-text').value = ''; $('#phraseFormTitle').textContent = 'ひとことを足す'; $('#p-cancel').hidden = true; countP(); }
+  const countP = () => { const n = $('#p-text').value.trim().length; $('#p-count').textContent = `${n} / 40文字`; };
+  $('#p-text').addEventListener('input', countP);
+  $('#p-save').addEventListener('click', async () => {
+    if (await call('savePhrase', { id: editPhrase, cat: $('#p-cat').value, text: $('#p-text').value })) resetPhraseForm();
+  });
+  $('#p-cancel').addEventListener('click', () => { resetPhraseForm(); say(''); });
+  $('#phraseList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-editp]'); if (!b) return;
+    const p = S.phrases.find(x => x.id === b.dataset.editp); if (!p) return;
+    editPhrase = p.id; $('#p-cat').value = p.cat; $('#p-text').value = p.text; countP();
+    $('#phraseFormTitle').textContent = 'ひとことを直す'; $('#p-cancel').hidden = false; $('#p-text').focus();
+  });
+
+  // ---------- 商品 ----------
+  $('#d-color').innerHTML = Object.entries(COLORS).map(([k, [n]]) => `<option value="${k}">${n}</option>`).join('');
+  $('#s-theme').innerHTML = $('#d-color').innerHTML;
+  function resetProductForm() { editProduct = ''; $('#d-name').value = ''; $('#d-desc').value = ''; $('#d-color').value = 'pink'; $('#productFormTitle').textContent = '商品を足す'; $('#d-cancel').hidden = true; countD(); }
+  const countD = () => { $('#d-count').textContent = `${$('#d-desc').value.trim().length} / 60文字`; aiProduct(); };
+  $('#d-desc').addEventListener('input', countD); $('#d-name').addEventListener('input', aiProduct);
+  $('#d-save').addEventListener('click', async () => {
+    if (await call('saveProduct', { id: editProduct, name: $('#d-name').value, desc: $('#d-desc').value, color: $('#d-color').value })) resetProductForm();
+  });
+  $('#d-cancel').addEventListener('click', () => { resetProductForm(); say(''); });
+  $('#productList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-editd]'); if (!b) return;
+    const p = S.products.find(x => x.id === b.dataset.editd); if (!p) return;
+    editProduct = p.id; $('#d-name').value = p.name; $('#d-desc').value = p.desc; $('#d-color').value = p.color; countD();
+    $('#productFormTitle').textContent = '商品を直す'; $('#d-cancel').hidden = false; $('#d-name').focus();
+  });
+
+  // しまう・戻す(しまうときは、2回押したときだけ)
+  let armed = null;
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-hide]'); if (!b) return;
+    const toHide = b.dataset.to === '1';
+    if (toHide && armed !== b) {
+      if (armed) armed.textContent = 'しまう';
+      armed = b; b.textContent = 'もう一度押すと、しまう';
+      setTimeout(() => { if (armed === b) { b.textContent = 'しまう'; armed = null; } }, 4000);
+      return;
+    }
+    armed = null;
+    await call('setHidden', b.dataset.hide, b.dataset.id, toHide);
+  });
+  document.addEventListener('click', e => { const b = e.target.closest('button[data-seed]'); if (b) call('seedExamples', b.dataset.seed); });
+
+  // ---------- お店の設定 ----------
+  $('#s-regular').innerHTML = WEEK.map((w, i) => `<label><input type="checkbox" value="${i}" aria-label="${w}曜日">${w}</label>`).join('');
+  ['notice1', 'notice2', 'postDay'].forEach(k => { for (let d = 1; d <= 28; d++) $('#s-' + k).add(new Option(d, d)); });
+  for (let h = 0; h <= 23; h++) $('#s-postHour').add(new Option(h, h));
+  $('#s-save').addEventListener('click', () => call('saveSettings', {
+    hours: $('#s-hours').value, theme: $('#s-theme').value,
+    regular: [...document.querySelectorAll('#s-regular input:checked')].map(el => el.value).join(','),
+    notice1: $('#s-notice1').value, notice2: $('#s-notice2').value, postDay: $('#s-postDay').value, postHour: $('#s-postHour').value,
+    postTo: (document.querySelector('input[name=postTo]:checked') || {}).value || 'feed'
+  }));
+
+  // ---------- AIに頼む文 ----------
+  function aiPhrase() {
+    const sit = $('#ai-sit').value.trim() || '(ここに状況が入ります)';
+    $('#ai-phrase').value = `洋菓子店がInstagramのストーリーズに入れる、短い一言を考えてください。\n\n状況:${sit}\n\n条件\n・お客さまに向けた、ていねいで親しみやすい日本語(です・ます調)\n・1つ30字以内。最後に句点は付けない\n・価格、割引、事実か分からないこと(在庫、閉店時刻、サービスの内容)は書かない\n・絵文字は使わない\n・言い回しを変えて、5つ出す\n\n5つを、1行に1つずつ書いてください。`;
+  }
+  function aiProduct() {
+    const name = $('#d-name').value.trim() || '(商品名)', memo = $('#d-desc').value.trim() || '(作った人の短いメモ)';
+    $('#ai-product').value = `洋菓子店の商品の説明を、Instagramの画像に入れる短い文に整えてください。\n\n商品名:${name}\n作った人のメモ:${memo}\n\n条件\n・40字以内の1文\n・メモに書かれていない材料、産地、味、効果は足さない\n・ていねいな日本語。価格は書かない。絵文字は使わない\n\n整えた文だけを書いてください。`;
+  }
+  $('#ai-sit').addEventListener('input', aiPhrase);
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-copy]'); if (!b) return;
+    try { await navigator.clipboard.writeText($('#' + b.dataset.copy).value); say('コピーしました。AIのページに貼り付けてください。'); }
+    catch { $('#' + b.dataset.copy).select(); say('自動でコピーできませんでした。文が選ばれた状態なので、長押し(パソコンは command + C)でコピーしてください。', true); }
+  });
+  $('#logCopy').addEventListener('click', async () => {
+    const tsv = ['日時\t種類\t大きさ\t秒', ...S.logs.rows.map(r => [r.at, KIND[r.kind] || r.kind, FMT[r.fmt] || r.fmt, r.sec].join('\t'))].join('\n');
+    try { await navigator.clipboard.writeText(tsv); say('コピーしました。表計算ソフトに貼り付けられます。'); } catch { say('コピーできませんでした。', true); }
+  });
+
+  // ---------- 画面の切りかえ ----------
+  const TABS = ['phrases', 'products', 'settings', 'logs', 'more'];
+  function showTab(t) {
+    TABS.forEach(n => { $('#tab-' + n).hidden = n !== t; const a = document.querySelector(`[data-tab="${n}"]`); if (n === t) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  }
+  document.querySelector('.tabs').addEventListener('click', e => { const a = e.target.closest('a[data-tab]'); if (!a) return; e.preventDefault(); showTab(a.dataset.tab); say(''); });
+
+  aiPhrase(); aiProduct(); resetPhraseForm(); resetProductForm(); showTab('phrases');
+  run('getState').then(st => { S = st; paint(); }).catch(() => { $('#loading').textContent = '読みこめませんでした。電波のある所で、開き直してください。'; });
+})();
+</script>
+</body>
+</html>

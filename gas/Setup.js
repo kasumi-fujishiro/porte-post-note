@@ -1,21 +1,6 @@
 // 初期設定。新しい持ち主が、GASのエディタで setupSheet を1回実行すれば終わるようにする。
 // 何度実行しても壊れない(あるものはそのまま、足りないものだけ作る)。
 
-// 例として入れるひとことと商品(「例」の印つき。お店の実際の内容ではない)
-const EXAMPLE_PHRASES = [
-  ['雨の日', '足元にお気をつけてお越しください'], ['雨の日', '雨の中のご来店、ありがとうございます'],
-  ['暑い日', '保冷剤をご用意しております'], ['暑い日', '涼しい店内でお待ちしております'],
-  ['寒い日', 'あたたかくしてお越しください'], ['雪・荒天', 'どうぞ無理のないようにお越しください'],
-  ['週末・連休', '本日も元気に営業しております'], ['いつでも', '皆さまのお越しをお待ちしております']
-];
-const EXAMPLE_PRODUCTS = [
-  ['いちごのカップデザート', '甘ずっぱいいちごのソースと、ふんわりホイップ', 'pink'],
-  ['ガトーショコラ', 'しっとり濃厚なチョコレート生地', 'brown'],
-  ['シャインマスカットのタルト', 'みずみずしいシャインマスカットをのせました', 'green']
-];
-
-const newId_ = () => Utilities.getUuid().replace(/-/g, '').slice(0, 10);
-
 function setupSheet() {
   const props = PropertiesService.getScriptProperties();
   let book;
@@ -92,10 +77,7 @@ function handleSheetEdit(e) {
   if (!lock.tryLock(10000)) return;
   try {
     const sh = e && e.range && e.range.getSheet();
-    if (sh && sh.getName() === SHEETS.settings.name && e.range.getRow() > 1) {
-      const key = sh.getRange(e.range.getRow(), 1).getDisplayValue();
-      if (key === 'version') { setProp_('FEED_VERSION', e.range.getDisplayValue()); return; }
-    }
+    if (sh && sh.getName() === SHEETS.settings.name && e.range.getRow() > 1 && sh.getRange(e.range.getRow(), 1).getDisplayValue() === 'version') return;
     bumpVersion_();
   } finally { lock.releaseLock(); }
 }

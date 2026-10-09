@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>管理ページの埋めこみの試し</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: "Hiragino Maru Gothic ProN", sans-serif; }
+  p { margin: 0; padding: 8px 12px; font-size: 14px; background: #FFF1CC; color: #5B4300; }
+  iframe { border: 0; width: 100%; height: calc(100% - 40px); display: block; }
+</style>
+</head>
+<body>
+<p>試しのページ:下の枠の中に、管理ページを埋めこんでいます。ログインして、保存までできるかを確かめます。</p>
+<iframe id="f" title="管理ページ"></iframe>
+<script type="module">
+import { CONFIG } from '../config.js?v=10';
+document.getElementById('f').src = CONFIG.adminUrl;
+</script>
+</body>
+</html>

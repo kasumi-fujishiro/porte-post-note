@@ -32,16 +32,23 @@ function appendRows_(key, objs) {
   sh.getRange(lastDataRow_(sh) + 1, 1, values.length, cols.length).setValues(values);
 }
 
-// 版番号を1つ上げる。設定のシートと、設定欄(配信データの使い回しに使う)の両方を直す
+// 版番号(設定のシートの version)を1つ上げる。公開窓口と管理ページの両方が使う
 function bumpVersion_() {
   const sh = sheet_('settings'), vals = sh.getRange(1, 1, lastDataRow_(sh), 2).getDisplayValues();
   const i = vals.findIndex(r => r[0] === 'version');
   if (i < 0) throw new Error('設定のシートに version の行がありません。');
   const next = (parseInt(vals[i][1], 10) || 0) + 1;
   sh.getRange(i + 1, 2).setValue(String(next));
-  setProp_('FEED_VERSION', String(next));
   return next;
 }
+
+// 今の版番号
+function currentVersion_() {
+  const r = readTable_('settings').find(x => x.key === 'version');
+  return r ? parseInt(r.value, 10) || 0 : 0;
+}
+
+const newId_ = () => Utilities.getUuid().replace(/-/g, '').slice(0, 10);
 
 // 動作記録に1行足す。新しい500行だけ残す
 function logRun_(job, result, detail) {

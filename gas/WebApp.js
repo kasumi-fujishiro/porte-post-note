@@ -16,9 +16,10 @@ function json_(obj) {
   return ContentService.createTextOutput(typeof obj === 'string' ? obj : JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// 配信データ。版番号が変わるまでは、作ったものを使い回す(シートを毎回読まないため)
+// 配信データ。版番号が変わるまでは、作ったものを使い回す(シートのほかの表を毎回読まないため)
+// 版番号はシートから読む(管理ページは別のプロジェクトなので、ここの設定欄は書きかえられない)
 function feedData_() {
-  const cache = CacheService.getScriptCache(), v = prop_('FEED_VERSION', false) || '0', key = 'feed:' + v;
+  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = 'feed:' + v;
   const hit = cache.get(key);
   if (hit) return hit;
   const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars') };
