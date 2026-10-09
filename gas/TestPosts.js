@@ -45,3 +45,10 @@ function testStopWeek() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'testMakeReservationNow').forEach(t => ScriptApp.deleteTrigger(t));
   console.log('試しの予約づくりを止めました。');
 }
+
+// LINEに試しの知らせを1通送る(友だち全員あて)
+function testLineMessage() {
+  testGuard_();
+  const ok = lineBroadcast_(`【投稿ノート】これは試しの知らせです。アプリを開くときは、このリンクを押してください。\n${appLink_()}`);
+  console.log(ok ? 'LINEに送りました。届いたか確かめてください。' : 'LINEに送れませんでした。シートの「動作記録」に理由が出ています。');
+}
