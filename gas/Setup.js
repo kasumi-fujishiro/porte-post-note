@@ -22,8 +22,9 @@ function setupSheet() {
     sh.getRange(1, 1, sh.getMaxRows(), n).setNumberFormat('@');
     sh.getRange(1, 1, 1, n).setValues([def.cols.map(c => c[1])]).setFontWeight('bold').setBackground('#EDF1E8');
     sh.setFrozenRows(1);
-    // 見出しの行とIDの列は、手で直そうとすると注意が出るようにする(コードからは書ける)
-    protectWarn_(sh, sh.getRange(1, 1, 1, n), '見出しの行は直さないでください');
+    // 見出しの行は、持ち主しか直せないようにする(管理ページは見出しを書かない)
+    protectStrict_(sh, sh.getRange(1, 1, 1, n), '見出しの行は直さないでください');
+    // IDの列は、手で直そうとすると注意が出るようにする(管理ページが新しい行のIDを書くので、本当の保護にはしない)
     if (def.idCol) {
       const c = def.cols.findIndex(x => x[0] === def.idCol) + 1;
       protectWarn_(sh, sh.getRange(2, c, sh.getMaxRows() - 1, 1), `${def.cols[c - 1][1]}の列は直さないでください`);
@@ -52,6 +53,16 @@ function setupSheet() {
   bumpVersion_();
   logRun_('setupSheet', '成功', '初期設定');
   console.log(`できました。シート:${book.getUrl()}`);
+}
+
+// 持ち主しか直せない保護。前に「注意だけ」で作ったものがあれば、強くする
+function protectStrict_(sh, range, why) {
+  let p = sh.getProtections(SpreadsheetApp.ProtectionType.RANGE).find(x => x.getDescription() === why);
+  if (!p) p = range.protect().setDescription(why);
+  p.setWarningOnly(false);
+  p.addEditor(Session.getEffectiveUser());
+  p.removeEditors(p.getEditors().filter(u => u.getEmail() !== Session.getEffectiveUser().getEmail()));
+  if (p.canDomainEdit()) p.setDomainEdit(false);
 }
 
 function protectWarn_(sh, range, why) {

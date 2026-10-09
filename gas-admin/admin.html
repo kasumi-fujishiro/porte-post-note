@@ -161,7 +161,8 @@
       say(r.error || r.message, !!r.error);
       return !r.error;
     } catch (e) {
-      say('通信がうまくいきませんでした。電波のある所で、もう一度押してください。', true); return false;
+      if (/permission|権限|access|アクセス/i.test(String((e && e.message) || e))) { say('シートに書きこめませんでした。このGoogleアカウントに、シートの「編集者」として共有されているか確かめてください。', true); return false; }
+      say('通信がうまくいきませんでした。電波のある所で、もう一度押してください。(くわしい理由:' + ((e && e.message) || e) + ')', true); return false;
     } finally { document.querySelectorAll('button').forEach(b => { b.disabled = b.dataset.was === 'true'; }); }
   }
 
@@ -169,6 +170,7 @@
   function paint() {
     $('#loading').hidden = true;
     if (S.error === 'noaccess') { $('#noaccess').hidden = false; $('#meNo').textContent = S.me || '(分かりません)'; return; }
+    if (S.error) { $('#loading').hidden = false; $('#loading').textContent = '読みこめませんでした。(くわしい理由:' + S.detail + ')'; return; }
     $('#main').hidden = false;
     document.body.classList.toggle('readonly', !S.canEdit); $('#readonlyNote').hidden = S.canEdit;
     $('#me').textContent = S.me; $('#sheetLink').href = S.sheetUrl;
@@ -301,7 +303,17 @@
   document.querySelector('.tabs').addEventListener('click', e => { const a = e.target.closest('a[data-tab]'); if (!a) return; e.preventDefault(); showTab(a.dataset.tab); say(''); });
 
   aiPhrase(); aiProduct(); resetPhraseForm(); resetProductForm(); showTab('phrases');
-  run('getState').then(st => { S = st; paint(); }).catch(() => { $('#loading').textContent = '読みこめませんでした。電波のある所で、開き直してください。'; });
+  const isNoAccess = e => /permission|権限|access|アクセス/i.test(String((e && e.message) || e));
+  async function noAccess() {
+    $('#loading').hidden = true; $('#noaccess').hidden = false;
+    $('#meNo').textContent = (await run('whoAmI').catch(() => '')) || '(分かりません)';
+  }
+  run('getState').then(st => { S = st; paint(); }).catch(e => {
+    if (isNoAccess(e)) { noAccess(); return; }
+    $('#loading').innerHTML = '読みこめませんでした。次のどちらかを試してください。<br>'
+      + '・このブラウザで、Googleのアカウントに2つ以上ログインしていると、うまく動かないことがあります。使うアカウント1つだけでログインし直すか、プライベートブラウズ(シークレットウィンドウ)で開いてください。<br>'
+      + '・電波のある所で、開き直してください。<br><span class="hint">(くわしい理由:' + esc((e && e.message) || e) + ')</span>';
+  });
 })();
 </script>
 </body>

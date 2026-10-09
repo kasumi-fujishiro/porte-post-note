@@ -16,11 +16,28 @@ function appUrl_() {
   return u.endsWith('/') ? u : u + '/';
 }
 
-// 画面に出す内容をまとめて返す
+// 画面に出す内容をまとめて返す。
+// 共有されていないシートを開こうとすると、Googleはここで処理を打ち切る(try で受けとめられない)。
+// そのときは画面の側で失敗の文を見て、「開けません」の案内を出す(admin.html の noAccess)
 function getState() {
-  const me = Session.getActiveUser().getEmail();
-  let book;
-  try { book = book_(); } catch (e) { return { error: 'noaccess', me }; }
+  let me = '';
+  try { me = Session.getActiveUser().getEmail(); } catch (e) { me = ''; }
+  try {
+    return state_(me);
+  } catch (e) {
+    const detail = String((e && e.message) || e);
+    console.log(`getState が失敗しました(${me}):${detail}`);
+    return { error: /permission|権限|access|アクセス/i.test(detail) ? 'noaccess' : 'failed', me, detail };
+  }
+}
+
+// いま開いている人のアカウント(シートには触らない)。シートを開けなかったときの案内に使う
+function whoAmI() {
+  try { return Session.getActiveUser().getEmail(); } catch (e) { return ''; }
+}
+
+function state_(me) {
+  const book = book_();
   const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars') };
   const { feed, problems } = buildFeed(tables, '', null);
   let canEdit = false;
