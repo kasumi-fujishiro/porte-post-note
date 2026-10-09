@@ -4,6 +4,8 @@
 
 - 指示書:[docs/claude-code-prompt.md](docs/claude-code-prompt.md)(第2版。第1版は docs/old/)
 - 技術構成の検討書:[docs/architecture-review.md](docs/architecture-review.md)
+- 説明書:[お店の人向け](docs/manual-shop.md)、[管理する人向け](docs/manual-admin.md)
+- できあがりの確認:[docs/checklist.md](docs/checklist.md)
 
 正しいデータはGoogleスプレッドシート1つで、裏側はGoogle Apps Script(`gas/`)。この画面(GitHub Pages)は、GASの公開窓口から配信データを受け取って動く。
 
