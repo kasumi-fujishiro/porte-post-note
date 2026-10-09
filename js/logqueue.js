@@ -1,7 +1,7 @@
 // 作業時間の記録を、公開窓口に送る。送れなかった分は端末にためておき、次に開いたときや電波が戻ったときに送る。
 // 送るのは、日時・種類・大きさ・秒数だけ(名前や端末の情報は送らない)。
-import { CONFIG } from '../config.js?v=8';
-import { ls } from './store.js?v=8';
+import { CONFIG } from '../config.js?v=9';
+import { ls } from './store.js?v=9';
 
 const KEY = 'pn-logq', MAX = 50, BATCH = 20;
 let busy = false;

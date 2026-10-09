@@ -17,6 +17,10 @@ export const gasCases = [
     const rows = G('rowsToObjects')('phrases', [['ID', '状況', 'ひとこと', '並び順', 'しまう', '例', '更新日時'], ['a1', '雨の日', '足元に', '1', 'FALSE', 'TRUE', ''], ['', '', '', '', '', '', '']]);
     eq(rows.length, 1); eq(rows[0].cat, '雨の日'); eq(rows[0].row, 2);
   }],
+  ['チェックボックスだけの空の行(FALSE)は、空の行として外す', eq => {
+    const rows = G('rowsToObjects')('phrases', [['ID', '状況', 'ひとこと', '並び順', 'しまう', '例', '更新日時'], ['', '', '', '', 'FALSE', 'FALSE', ''], ['a1', '雨の日', '足元に', '1', 'FALSE', 'FALSE', '']]);
+    eq(rows.length, 1); eq(rows[0].id, 'a1');
+  }],
   ['見出しの順番を入れかえても読める', eq => {
     const rows = G('rowsToObjects')('phrases', [['ひとこと', 'ID', '状況'], ['足元に', 'a1', '雨の日']]);
     eq(rows[0].id, 'a1'); eq(rows[0].text, '足元に');

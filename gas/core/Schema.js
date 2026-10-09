@@ -61,7 +61,8 @@ function rowsToObjects(sheetKey, values) {
     const o = { row: i + 2 };
     keys.forEach((k, j) => { if (k) o[k] = String(r[j] == null ? '' : r[j]).trim(); });
     return o;
-  }).filter(o => Object.keys(o).some(k => k !== 'row' && o[k] !== ''));
+  }).filter(o => Object.keys(o).some(k => k !== 'row' && o[k] !== '' && o[k] !== 'FALSE'));
+  // チェックボックスの欄は、空の行でも「FALSE」と読めるので、それだけの行は空の行として外す
 }
 
 if (typeof module !== 'undefined') module.exports = { SHEETS, SETTING_ROWS, COLORS, CAL_STATES, RES_STATES, LOG_KINDS, LOG_FMTS, headerKeys, rowsToObjects };

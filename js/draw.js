@@ -1,7 +1,7 @@
 // 画像を描く処理(試作版の drawOpen / drawNew / drawPark / drawCal / brush / ink / block を整理したもの)。
 // 画面の部品には触らず、渡された内容 s だけを見て描く。
-import { THEMES, SEASONS } from './data.js?v=8';
-import { WEEK, layout } from './text.js?v=8';
+import { THEMES, SEASONS } from './data.js?v=9';
+import { WEEK, layout } from './text.js?v=9';
 
 export const F_TITLE = '"Potta One","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
 export const F_HAND = '"Yusei Magic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
