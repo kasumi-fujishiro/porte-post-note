@@ -1,7 +1,8 @@
 // コマンドで動かす: node tests/run.mjs
 import { run } from './cases.js';
+import { gasCases } from './gas-cases.mjs';
 
-const results = run();
+const results = run(gasCases);
 for (const r of results) {
   console.log(`${r.ok ? '○' : '×'} ${r.name}`);
   r.errors.forEach(e => console.log(`    ${e}`));

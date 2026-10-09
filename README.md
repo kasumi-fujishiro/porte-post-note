@@ -5,7 +5,7 @@
 - 指示書:[docs/claude-code-prompt.md](docs/claude-code-prompt.md)(第2版。第1版は docs/old/)
 - 技術構成の検討書:[docs/architecture-review.md](docs/architecture-review.md)
 
-正しいデータはGoogleスプレッドシート1つで、裏側はGoogle Apps Script(`gas/`、これから作る)。この画面(GitHub Pages)は、GASの公開窓口から配信データを受け取って動く。今は段階1で、ひとこと・商品・お店の設定は `js/data.js` の仮のもの(「例」の印つき)を使う。
+正しいデータはGoogleスプレッドシート1つで、裏側はGoogle Apps Script(`gas/`)。この画面(GitHub Pages)は、GASの公開窓口から配信データを受け取って動く。
 
 ## 手元で動かす
 
@@ -21,7 +21,10 @@ python3 -m http.server 8000
 - `config.js` 画面側の設定ファイル(公開窓口と管理ページのURL)。秘密の情報は書かない
 - `js/app.js` 画面の動き / `js/draw.js` 画像を描く処理(管理ページも読む)
 - `js/text.js` 日付と文字の折り返し / `js/calendar.js` 営業カレンダーとお知らせの計算
-- `js/store.js` 端末への保存 / `js/data.js` 仮のデータ
+- `js/store.js` 端末への保存 / `js/data.js` 配信データが届かないときの予備
+- `js/feed.js` 配信データを受け取る / `js/logqueue.js` 作業時間を送る
+- `sw.js` 電波がないときのために、画面のファイルを端末に保存する
+- `gas/` 裏側(GAS)。`gas/core/` はGASに頼らない部分で、Node.jsでテストする
 - `images/parking.jpg` お店で決めた駐車場の案内
 - `tests/` 自動テスト
 - `prototype-post-note.html` 参考にした試作版
@@ -32,4 +35,4 @@ python3 -m http.server 8000
 
 ## 直したものを公開するとき
 
-ブラウザが古いファイルを覚えていて、新しい版と混ざらないように、ファイル名の後ろに版の番号(`?v=7`)をつけています。`js/` や `css/` や `config.js` を直したら、`index.html` と `js/*.js` の中の `?v=7` をすべて次の番号(`?v=8` など)に変えてから公開します。
+ブラウザが古いファイルを覚えていて、新しい版と混ざらないように、ファイル名の後ろに版の番号(`?v=8`)をつけています。`js/` や `css/` や `config.js` を直したら、`index.html`・`js/*.js`・`sw.js` の中の `?v=8` をすべて次の番号(`?v=9` など)に変え、`sw.js` の `VERSION` も同じ番号(`v9`)にしてから公開します。サービスワーカー(`sw.js`)が古いファイルを消して、次に開いたときに全員が新しい版になります。

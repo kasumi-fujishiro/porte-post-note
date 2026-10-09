@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=7">
-<script type="module" src="js/app.js?v=7"></script>
+<link rel="stylesheet" href="css/style.css?v=8">
+<script type="module" src="js/app.js?v=8"></script>
 </head>
 <body>
 <div class="app">
@@ -111,14 +111,16 @@
       <h2>登録・確認(お店の人用)</h2>
       <p>ひとこと、商品、お店の設定の登録と、営業カレンダーの確認は、お店の人用のページで行います。</p>
       <div class="row"><button type="button" class="primary" id="adminOpen">登録・確認のページを開く</button></div>
-      <p class="hint" id="adminSoon">お店の人用のページは準備中です。今は、例として入れたひとことと商品が出ています。</p>
+      <p class="hint" id="adminSoon">お店の人用のページは準備中です。</p>
+      <p class="hint" id="feedInfo"></p>
     </section>
     <section class="stack">
       <h2>作業時間の記録(このスマホの分)</h2>
-      <p class="hint">「つくる」の画面で内容に触りはじめてから、保存か共有をするまでの時間です。今は、このスマホの分だけが残ります。全員の分は、あとでお店の人用のページで見られるようにします。</p>
+      <p class="hint">「つくる」の画面で内容に触りはじめてから、保存か共有をするまでの時間です。今は、このスマホの分だけが残ります。記録は、日時・種類・大きさ・秒数だけを、お店のシートにも送ります(名前などは送りません)。</p>
       <p class="avg" id="logAvg"></p>
       <div class="scroll"><table id="logTable"><thead><tr><th>日時</th><th>種類</th><th>大きさ</th><th>秒</th></tr></thead><tbody></tbody></table></div>
       <p class="hint" id="logEmpty">まだ記録がありません。</p>
+      <p class="hint" id="logPending"></p>
       <div class="row"><button type="button" id="logCopy">表計算ソフトに貼れる形でコピー</button><button type="button" id="logClear">記録を消す</button></div>
       <p class="status" id="s-log" aria-live="polite"></p>
     </section>

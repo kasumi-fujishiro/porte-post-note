@@ -1,9 +1,11 @@
-// スタッフの画面の動き。データは今は画面に入れた仮のもの(段階3で、GASの公開窓口から配る配信データに切りかえる)。
-import { FORMATS, KINDS, PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=7';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=7';
-import { CONFIG } from '../config.js?v=7';
-import { ls, photoStore } from './store.js?v=7';
-import { draw } from './draw.js?v=7';
+// スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
+import { FORMATS, KINDS } from './data.js?v=8';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=8';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=8';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=8';
+import { CONFIG } from '../config.js?v=8';
+import { ls, photoStore } from './store.js?v=8';
+import { draw } from './draw.js?v=8';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -17,8 +19,8 @@ if (/Line\/|Instagram|FBAN|FBAV|FB_IAB/i.test(navigator.userAgent)) $('#inapp').
 // 開いたまま日付が変わったら、まっさらにするために読み込み直す
 document.addEventListener('visibilitychange', () => { if (!document.hidden && iso(new Date()) !== todayIso) location.reload(); });
 
-// ---------- お店の設定(段階3までは、画面に入れた仮のもの) ----------
-const settings = { ...DEFAULT_SETTINGS };
+// ---------- 配信データ(端末に保存した写し。なければ画面に入れた仮のもの) ----------
+let data = cachedFeed() || fallbackFeed();
 // 10月7日の試作で、端末に残したカレンダーと設定は使わないので消す
 ['pn-settings', 'pn-cal', 'pn-calok', 'pn-first'].forEach(k => ls.del(k));
 
@@ -60,8 +62,10 @@ function record() {
   const sec = elapsed(), d = new Date();
   recorded = true; clearInterval(tick);
   const log = ls.get('pn-log', []);
-  log.unshift({ at: `${iso(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`, kind: KINDS[radio('kind')], fmt: FORMATS[radio('fmt')].name, sec });
+  const at = `${iso(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  log.unshift({ at, kind: KINDS[radio('kind')], fmt: FORMATS[radio('fmt')].name, sec });
   ls.set('pn-log', log.slice(0, LOG_MAX)); saveDraft();
+  enqueueLog({ at, kind: radio('kind'), fmt: radio('fmt'), sec });
   $('#timer').textContent = `作業時間 ${fmtSec(sec)}(記録しました)`; $('#timer').classList.remove('on');
   paintLog();
 }
@@ -138,14 +142,14 @@ photoStore.get().then(async v => {
 });
 
 // ---------- ひとこと ----------
-const cats = () => [...new Set(PHRASES.map(p => p.cat))];
-const phraseText = () => (PHRASES.find(p => p.id === curPhrase) || {}).text || '';
+const cats = () => [...new Set(data.phrases.map(p => p.cat))];
+const phraseText = () => (data.phrases.find(p => p.id === curPhrase) || {}).text || '';
 function paintPhrases() {
   const cs = cats();
-  if (!PHRASES.some(p => p.id === curPhrase)) curPhrase = '';
-  if (!cs.includes(curCat)) curCat = (PHRASES.find(p => p.id === curPhrase) || {}).cat || cs[0] || '';
+  if (!data.phrases.some(p => p.id === curPhrase)) curPhrase = '';
+  if (!cs.includes(curCat)) curCat = (data.phrases.find(p => p.id === curPhrase) || {}).cat || cs[0] || '';
   $('#catChips').innerHTML = cs.map(c => `<label><input type="radio" name="cat" value="${esc(c)}"${c === curCat ? ' checked' : ''}>${esc(c)}</label>`).join('');
-  const items = PHRASES.filter(p => p.cat === curCat);
+  const items = data.phrases.filter(p => p.cat === curCat);
   $('#phraseChips').innerHTML = [`<label><input type="radio" name="phrase" value=""${curPhrase ? '' : ' checked'}>ひとことなし</label>`,
     ...items.map(p => `<label><input type="radio" name="phrase" value="${p.id}"${p.id === curPhrase ? ' checked' : ''}>${esc(p.text)}${p.ex ? '<span class="tagex">例</span>' : ''}</label>`)].join('');
 }
@@ -158,19 +162,23 @@ $('#phraseCopy').addEventListener('click', async () => {
 });
 
 // ---------- 商品 ----------
-$('#f-product').innerHTML = PRODUCTS.map(p => `<option value="${p.id}">${esc(p.name)}${p.ex ? '(例)' : ''}</option>`).join('');
-if (PRODUCTS.some(p => p.id === draft.product)) $('#f-product').value = draft.product;
-const product = () => PRODUCTS.find(p => p.id === $('#f-product').value) || null;
+function paintProducts() {
+  const sel = $('#f-product'), keep = sel.value || draft.product;
+  sel.innerHTML = data.products.map(p => `<option value="${p.id}">${esc(p.name)}${p.ex ? '(例)' : ''}</option>`).join('');
+  if (data.products.some(p => p.id === keep)) sel.value = keep;
+  sel.disabled = !data.products.length;
+}
+const product = () => data.products.find(p => p.id === $('#f-product').value) || null;
 
 // ---------- 画像を描く ----------
 const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=7';
+parkImg.src = 'images/parking.jpg?v=8';
 function drawState() {
   return {
-    kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: settings.theme, hours: settings.hours,
+    kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
     open: { date: dateLabel($('#f-date').value || todayIso), pos: radio('pos'), phrase: phraseText() },
     product: product(), badge: $('#f-badge').value,
     parkImage: parkImg.complete && parkImg.naturalWidth ? parkImg : null
@@ -297,5 +305,27 @@ $('#adminOpen').disabled = !CONFIG.adminUrl;
 $('#adminSoon').hidden = !!CONFIG.adminUrl;
 $('#adminOpen').addEventListener('click', () => { if (CONFIG.adminUrl) location.href = CONFIG.adminUrl; });
 
-paintPhrases(); syncKind(); paintLog(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
+// ---------- 配信データの更新と、作業時間の送信 ----------
+function paintFeedInfo(state) {
+  const el = $('#feedInfo');
+  const when = data.generatedAt ? data.generatedAt.slice(0, 16).replace('T', ' ') : '';
+  el.textContent = !data.version ? 'お店のデータは、まだ受け取っていません。例として入れたひとことと商品で動いています。'
+    : `お店のデータ:版 ${data.version}(${when} に作られたもの)`
+      + (state === 'offline' ? '。いまは新しい版を確かめられないので、前回の内容で動いています。' : '');
+  const n = pendingLogs();
+  $('#logPending').textContent = n ? `まだ送れていない記録が ${n}件 あります。電波のある所で開くと送ります。` : '';
+}
+async function refreshFeed() {
+  const [f, state] = await fetchFeed(data);
+  if (f) { data = f; paintPhrases(); paintProducts(); saveDraft(); changed(); }
+  paintFeedInfo(state);
+}
+addEventListener('online', () => { flushLogs().then(() => paintFeedInfo()); refreshFeed(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshFeed(); flushLogs(); } });
+
+// 電波がないときのために、画面のファイルを端末に保存する
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+paintPhrases(); paintProducts(); syncKind(); paintLog(); paintFeedInfo();
+refreshFeed(); flushLogs(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());
