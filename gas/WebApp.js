@@ -68,14 +68,16 @@ function json_(obj) {
 // 配信データ。版番号が変わるまでは、作ったものを使い回す(シートのほかの表を毎回読まないため)
 // 版番号はシートから読む(管理ページは別のプロジェクトなので、ここの設定欄は書きかえられない)
 function feedData_() {
-  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = 'feed:' + v;
+  // 版番号に加えて、最後に正しく動いた日時と、トークンの状態が変わったら作り直す
+  const lastOk = prop_('LAST_OK_AT', false), tokenBad = prop_('TOKEN_BAD', false) === 'yes';
+  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = `feed:${v}:${lastOk}:${tokenBad}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars'), reservations: readTable_('reservations') };
-  let alert = null;
-  try { alert = JSON.parse(prop_('AUTO_ALERT', false) || 'null'); } catch (err) { alert = null; }
   const generatedAt = Utilities.formatDate(new Date(), 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX");
-  const { feed, problems } = buildFeed(tables, generatedAt, { alert });
+  const { feed, problems } = buildFeed(tables, generatedAt, null);
+  // 自動投稿の状態:最後に正しく動いた日時と、知らせ(要確認、3回失敗、トークンが使えない)
+  feed.auto = { lastOkAt: lastOk, alert: deriveAlert(tables.reservations, tokenBad) };
   const text = JSON.stringify(feed);
   cache.put(key, text, 21600);
   cache.put('problems:' + v, JSON.stringify(problems), 21600);

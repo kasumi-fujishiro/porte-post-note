@@ -1,12 +1,12 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=11';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=11';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=11';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=11';
-import { monthInfo, noticeFor } from './calendar.js?v=11';
-import { CONFIG } from '../config.js?v=11';
-import { ls, photoStore } from './store.js?v=11';
-import { draw } from './draw.js?v=11';
+import { FORMATS, KINDS } from './data.js?v=12';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=12';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=12';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=12';
+import { monthInfo, noticeFor } from './calendar.js?v=12';
+import { CONFIG } from '../config.js?v=12';
+import { ls, photoStore } from './store.js?v=12';
+import { draw } from './draw.js?v=12';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -198,6 +198,14 @@ function updateNotice() {
   $('#noticeText').append(small);
   $('#noticeGo').hidden = !CONFIG.adminUrl;
 }
+// 自動投稿がうまくいかなかったとき、または自動実行が2日以上動いていないときに出す
+function paintAuto() {
+  const a = data.auto || {}, el = $('#autoAlert');
+  const last = a.lastOkAt ? new Date(a.lastOkAt.slice(0, 16).replace(' ', 'T')) : null;
+  const stale = last && Date.now() - last.getTime() >= 48 * 3600 * 1000;
+  const msg = a.alert ? a.alert.message : stale ? `営業カレンダーを自動で投稿するしくみが、2日以上動いていません(最後に動いたのは ${a.lastOkAt.slice(5, 16)})。お店の人に知らせてください。` : '';
+  el.hidden = !msg; el.textContent = msg;
+}
 $('#noticeGo').addEventListener('click', () => { if (CONFIG.adminUrl) location.href = `${CONFIG.adminUrl}?tab=calendar&month=${$('#notice').dataset.key}`; });
 
 // ---------- 画像を描く ----------
@@ -205,7 +213,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=11';
+parkImg.src = 'images/parking.jpg?v=12';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
@@ -349,7 +357,7 @@ function paintFeedInfo(state) {
 }
 async function refreshFeed() {
   const [f, state] = await fetchFeed(data);
-  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); saveDraft(); changed(); }
+  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); saveDraft(); changed(); }
   paintFeedInfo(state);
 }
 addEventListener('online', () => { flushLogs().then(() => paintFeedInfo()); refreshFeed(); });
@@ -358,6 +366,6 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 // 電波がないときのために、画面のファイルを端末に保存する
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintLog(); paintFeedInfo();
+paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintLog(); paintFeedInfo();
 refreshFeed(); flushLogs(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());

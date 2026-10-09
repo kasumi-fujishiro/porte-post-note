@@ -19,7 +19,7 @@ const SHEETS = {
     name: '予約', idCol: 'id',
     cols: [['id', '予約ID'], ['month', '月'], ['postTo', '投稿先'], ['postDate', '投稿日'], ['state', '状態'], ['imagePath', '画像の場所'],
       ['imageSize', '画像の大きさ'], ['imageHash', 'ハッシュ値'], ['driveFileId', '原本のファイルID'], ['containerId', '下書きID'],
-      ['mediaId', '投稿ID'], ['tries', 'やり直した回数'], ['lastError', '最後のエラー'], ['createdAt', '作成日時'], ['updatedAt', '更新日時'], ['publishedAt', '画像を公開した日時'], ['ticket', '受け渡しの合言葉']]
+      ['mediaId', '投稿ID'], ['tries', 'やり直した回数'], ['lastError', '最後のエラー'], ['createdAt', '作成日時'], ['updatedAt', '更新日時'], ['publishedAt', '画像を公開した日時'], ['ticket', '受け渡しの合言葉'], ['phase', '進み具合'], ['tokenBad', 'トークンが使えない']]
   },
   logs: { name: '作業時間', cols: [['receivedAt', '受けた日時'], ['at', '日時'], ['kind', '種類'], ['fmt', '大きさ'], ['sec', '秒']] },
   runs: { name: '動作記録', cols: [['at', '日時'], ['job', '処理'], ['result', '結果'], ['detail', '内容']] }

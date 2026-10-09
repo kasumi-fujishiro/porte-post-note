@@ -59,6 +59,8 @@ function state_(me) {
     })),
     // 月ごとの、いちばん新しい予約
     reservations: latestReservations_(tables.reservations),
+    recent: tables.reservations.filter(r => r.id).sort((a, b) => ((a.createdAt || '') < (b.createdAt || '') ? 1 : -1)).slice(0, 10)
+      .map(r => ({ id: r.id, month: r.month, state: r.state, postTo: r.postTo, postDate: r.postDate, mediaId: r.mediaId, lastError: r.lastError, tries: r.tries, updatedAt: r.updatedAt })),
     calendarState: feed.calendarState, schedule: feed.settings.schedule, regular: feed.settings.regular, firstUse: feed.settings.firstUse, postTo: feed.settings.postTo
   };
 }
@@ -212,4 +214,23 @@ function confirmCalendar(input, image, baseVersion) {
   });
   if (r.ok && made) Object.assign(r, made);
   return r;
+}
+
+// 「要確認」「失敗」の予約を、お店の人が決める。action: 'posted'(投稿済みにする)| 'retry'(もう一度出す)
+function resolveReservation(id, action, baseVersion) {
+  return mutate_(baseVersion, () => {
+    const r = readTable_('reservations').find(x => x.id === id);
+    if (!r) return { error: 'その予約が見つかりません。読み直してください。' };
+    if (!['要確認', '失敗'].includes(r.state)) return { error: `この予約は「${r.state}」なので、変えられません。` };
+    const now = nowText_();
+    if (action === 'posted') {
+      setCells_('reservations', r.row, { state: '投稿済み', phase: '', lastError: 'お店の人が「投稿済み」にしました', updatedAt: now });
+      return { message: '投稿済みにしました。' };
+    }
+    if (action === 'retry') {
+      setCells_('reservations', r.row, { state: '確認済み', phase: '', containerId: '', tries: '0', tokenBad: '', lastError: '', updatedAt: now });
+      return { message: 'もう一度出すことにしました。1時間以内に、自動で投稿します。' };
+    }
+    return { error: 'えらび方がちがいます。' };
+  });
 }

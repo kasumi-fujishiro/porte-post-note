@@ -41,6 +41,7 @@
     <p id="noticeText"></p>
     <div class="row"><button type="button" class="primary" id="noticeGo">営業日を確認する</button></div>
   </div>
+  <p class="warn" id="autoAlert" hidden></p>
   <p class="hint" id="loading">読みこんでいます…(初めてのときは、少し時間がかかります)</p>
 
   <div id="noaccess" class="box stack" hidden>
@@ -128,6 +129,11 @@
         <div class="row"><button type="button" id="c-download">画像を保存する</button><button type="button" class="small" id="c-showimg">うまく保存できないとき</button></div>
         <img id="c-img" alt="保存用の画像" hidden style="max-width:100%;border-radius:6px">
       </div>
+      <div class="box stack">
+        <h3 style="margin:0">最近の投稿</h3>
+        <p class="hint">「要確認」は、投稿できたか分からないものです。Instagramを見て、出ていれば「投稿済みにする」、出ていなければ「もう一度出す」を押してください。</p>
+        <div class="list" id="recent"></div>
+      </div>
       <div class="row"><button type="button" class="small" id="noticeTest">お知らせの表示を試す</button>
         <span class="seg" id="simModes" role="radiogroup" aria-label="試す日" hidden><label><input type="radio" name="sim" value="due" checked>知らせる時期</label><label><input type="radio" name="sim" value="late">投稿する日を過ぎた</label></span></div>
     </section>
@@ -184,10 +190,10 @@
 
 <script type="module">
 const APP = '<?= appUrl ?>', START_TAB = '<?= startTab ?>', START_MONTH = '<?= startMonth ?>';
-const { draw } = await import(APP + 'js/draw.js?v=11');
-const { FORMATS } = await import(APP + 'js/data.js?v=11');
-const CAL = await import(APP + 'js/calendar.js?v=11');
-const { CONFIG } = await import(APP + 'config.js?v=11');
+const { draw } = await import(APP + 'js/draw.js?v=12');
+const { FORMATS } = await import(APP + 'js/data.js?v=12');
+const CAL = await import(APP + 'js/calendar.js?v=12');
+const { CONFIG } = await import(APP + 'config.js?v=12');
 {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -221,7 +227,7 @@ const { CONFIG } = await import(APP + 'config.js?v=11');
     $('#main').hidden = false;
     document.body.classList.toggle('readonly', !S.canEdit); $('#readonlyNote').hidden = S.canEdit;
     $('#me').textContent = S.me; $('#sheetLink').href = S.sheetUrl;
-    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems(); paintMonths(); loadMonth(); updateNotice();
+    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems(); paintMonths(); loadMonth(); updateNotice(); paintRecent();
   }
   const exTag = x => (x.ex ? ' <span class="tagex">例</span>' : '');
   const hideBtn = (kind, id, hidden) => `<button type="button" class="small needs-edit" data-hide="${kind}" data-id="${id}" data-to="${hidden ? '0' : '1'}">${hidden ? '戻す' : 'しまう'}</button>`;
@@ -440,6 +446,29 @@ const { CONFIG } = await import(APP + 'config.js?v=11');
   });
   $('#c-showimg').addEventListener('click', async () => { const img = $('#c-img'); img.src = URL.createObjectURL(await calBlob(calFmt())); img.hidden = false; say('下の画像を長押し(パソコンは右クリック)して保存してください。'); });
 
+  // ---------- 最近の投稿 ----------
+  const STATE_HINT = { '確認済み': '投稿を待っています', '投稿中': '投稿しています', '投稿済み': '投稿しました', '失敗': 'うまくいきませんでした', '要確認': '投稿できたか分かりません', '取り消し': '取り消しました' };
+  function paintRecent() {
+    $('#recent').innerHTML = (S.recent || []).map(r => {
+      const label = /^\d{4}-\d{2}$/.test(r.month) ? `${+r.month.slice(5)}月の営業カレンダー` : '試しの投稿';
+      const acts = r.state === '要確認' ? `<button type="button" class="small needs-edit" data-resolve="posted" data-id="${r.id}">投稿済みにする</button><button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>`
+        : r.state === '失敗' ? `<button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>` : '';
+      return `<div class="item"><div><b>${esc(label)}</b>(${esc(r.postDate || '')}、${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'})<br><span class="hint">${esc(r.state)}:${esc(STATE_HINT[r.state] || '')}${r.lastError ? ' / ' + esc(r.lastError) : ''}</span></div><div class="acts">${acts}</div></div>`;
+    }).join('') || '<p class="hint">まだ予約はありません。</p>';
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('button[data-resolve]'); if (b) call('resolveReservation', b.dataset.id, b.dataset.resolve); });
+
+  // 自動投稿が止まっていないか(公開窓口の配信データを見る)
+  async function checkAuto() {
+    try {
+      const f = await (await fetch(CONFIG.feedUrl + '?api=feed&t=' + Date.now())).json(), a = f.auto || {};
+      const nowText = (d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`)(new Date());
+      const stale = a.lastOkAt && (new Date(nowText.replace(' ', 'T')) - new Date(a.lastOkAt.slice(0, 16).replace(' ', 'T'))) >= 48 * 3600 * 1000;
+      const msg = a.alert ? a.alert.message : stale ? `自動で投稿するしくみが、2日以上動いていません(最後に動いたのは ${a.lastOkAt.slice(0, 16)})。管理する人に知らせてください。` : '';
+      $('#autoAlert').hidden = !msg; $('#autoAlert').textContent = msg;
+    } catch { /* 読めなくても、ほかの画面はそのまま使える */ }
+  }
+
   // ---------- 確認のお知らせ ----------
   let sim = false;
   function updateNotice() {
@@ -472,6 +501,7 @@ const { CONFIG } = await import(APP + 'config.js?v=11');
     $('#loading').hidden = true; $('#noaccess').hidden = false;
     $('#meNo').textContent = (await run('whoAmI').catch(() => '')) || '(分かりません)';
   }
+  checkAuto();
   run('getState').then(st => { S = st; paint(); }).catch(e => {
     if (isNoAccess(e)) { noAccess(); return; }
     $('#loading').innerHTML = '読みこめませんでした。次のどちらかを試してください。<br>'

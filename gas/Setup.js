@@ -60,6 +60,12 @@ function setupSheet() {
   const exists = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'handleSheetEdit');
   if (!exists) ScriptApp.newTrigger('handleSheetEdit').forSpreadsheet(book).onEdit().create();
 
+  // 1時間ごとの自動実行(予約の投稿、知らせ)
+  if (!ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'hourlyJob')) {
+    ScriptApp.newTrigger('hourlyJob').timeBased().everyHours(1).create();
+    console.log('1時間ごとの自動実行(hourlyJob)を作りました。');
+  }
+
   bumpVersion_();
   logRun_('setupSheet', '成功', '初期設定');
   console.log(`できました。シート:${book.getUrl()}`);

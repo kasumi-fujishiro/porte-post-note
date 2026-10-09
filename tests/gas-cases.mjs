@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const ctx = vm.createContext({ console });
-for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js']) {
+for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js', 'Post.js']) {
   vm.runInContext(readFileSync(new URL(`../gas/core/${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
 const G = name => vm.runInContext(name, ctx);
@@ -141,6 +141,49 @@ export const gasCases = [
   ['配信:投稿済みの予約がある確認済みの月は、posted になる', eq => {
     const st = G('withPosted')({ '2026-11': 'confirmed', '2026-12': 'unconfirmed' }, [{ month: '2026-11', state: '投稿済み' }, { month: '2026-12', state: '投稿済み' }]);
     eq(st['2026-11'], 'posted'); eq(st['2026-12'], 'unconfirmed');
+  }],
+  // ---------- 自動投稿の状態の移り方 ----------
+  ['投稿:確認済みで、投稿する日の12時を過ぎたら投稿を始める', eq => {
+    const d = G('decide'), r = { state: '確認済み', postDate: '2026-10-25', publishedAt: '2026-10-20 10:00:00' };
+    eq(d(r, '2026-10-25 11:59:00', 12), 'wait'); eq(d(r, '2026-10-25 12:00:00', 12), 'post'); eq(d(r, '2026-10-26 09:00:00', 12), 'post');
+    eq(d({ ...r, publishedAt: '' }, '2026-10-25 12:30:00', 12), 'wait'); // 画像が公開されるまでは待つ
+  }],
+  ['投稿:取り消し・投稿済み・要確認は、自動では何もしない', eq => {
+    const d = G('decide');
+    ['取り消し', '投稿済み', '要確認'].forEach(st => eq(d({ state: st, postDate: '2026-10-25', publishedAt: 'x' }, '2026-10-26 12:00:00', 12), 'wait'));
+  }],
+  ['投稿中で止まっていた予約:公開を送ったあとなら「要確認」(自動で投稿し直さない)', eq => {
+    const d = G('decide');
+    eq(d({ state: '投稿中', phase: 'publishing', containerId: 'c1' }, '2026-10-25 13:00:00', 12), 'unknown');
+    eq(d({ state: '投稿中', phase: 'container', containerId: 'c1' }, '2026-10-25 13:00:00', 12), 'resume');
+    eq(d({ state: '投稿中', phase: '' }, '2026-10-25 13:00:00', 12), 'restart');
+  }],
+  ['失敗:1時間あけて、3回までやり直す。トークンが使えないときは、やり直さない', eq => {
+    const d = G('decide'), r = { state: '失敗', tries: '1', updatedAt: '2026-10-25 12:05:00', postDate: '2026-10-25' };
+    eq(d(r, '2026-10-25 12:30:00', 12), 'wait'); eq(d(r, '2026-10-25 13:05:00', 12), 'post');
+    eq(d({ ...r, tries: '3' }, '2026-10-25 15:00:00', 12), 'wait');
+    eq(d({ ...r, tokenBad: 'TRUE' }, '2026-10-25 15:00:00', 12), 'wait');
+    const a = G('afterFailure')({ tries: '2' }, false); eq(a.tries, '3'); eq(a.giveUp, true);
+    eq(G('afterFailure')({ tries: '0' }, true).giveUp, true);
+  }],
+  ['知らせ:要確認・3回失敗・トークンが使えないときに出す', eq => {
+    const a = G('deriveAlert');
+    eq(a([{ state: '失敗', tries: '1', month: '2026-11' }], false), null);
+    eq(a([{ state: '失敗', tries: '3', month: '2026-11' }], false).kind, 'failed');
+    eq(a([{ state: '要確認', month: '2026-11' }], false).message.includes('11月'), true);
+    eq(a([], true).kind, 'token');
+  }],
+  ['LINE:20日と23日に、まだ確認していなければ送る', eq => {
+    const k = G('lineNoticeKind'), sch = { notice1: 20, notice2: 23 };
+    eq(k('2026-10-20 09:00:00', sch, undefined), 'notice1'); eq(k('2026-10-23 09:00:00', sch, 'unconfirmed'), 'notice2');
+    eq(k('2026-10-23 09:00:00', sch, 'confirmed'), ''); eq(k('2026-10-21 09:00:00', sch, undefined), '');
+  }],
+  ['期限:GitHubのトークンが切れる日まで、あと何日か', eq => {
+    eq(G('daysUntil')('2027-09-10 09:00:00', '2027-10-10'), 30); eq(G('daysUntil')('2027-09-10', ''), null);
+  }],
+  ['止まったことに気づく:最後に正しく動いたのが2日以上前なら知らせる', eq => {
+    const s = G('isStale');
+    eq(s('2026-10-20 12:00:00', '2026-10-22 11:00:00'), false); eq(s('2026-10-20 12:00:00', '2026-10-22 12:00:00'), true); eq(s('', '2026-10-22 12:00:00'), false);
   }],
   ['記録:1分30件・1日300件をこえた分は受けつけない', eq => {
     const a = G('allowedCount');
