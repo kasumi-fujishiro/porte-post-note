@@ -4,7 +4,7 @@
 
 - 指示書:[docs/claude-code-prompt.md](docs/claude-code-prompt.md)(第2版。第1版は docs/old/)
 - 技術構成の検討書:[docs/architecture-review.md](docs/architecture-review.md)
-- 説明書:[お店の人向け](docs/manual-shop.md)、[管理する人向け](docs/manual-admin.md)
+- 説明書:お店の人向け(`manual.html`。アプリの「使い方」から開ける)、[管理する人向け](docs/manual-admin.md)
 - できあがりの確認:[docs/checklist.md](docs/checklist.md)
 
 正しいデータはGoogleスプレッドシート1つで、裏側はGoogle Apps Script(`gas/`)。この画面(GitHub Pages)は、GASの公開窓口から配信データを受け取って動く。
@@ -27,6 +27,7 @@ python3 -m http.server 8000
 - `js/feed.js` 配信データを受け取る / `js/logqueue.js` 作業時間を送る
 - `sw.js` 電波がないときのために、画面のファイルを端末に保存する
 - `gas/` 裏側(GAS)。`gas/core/` はGASに頼らない部分で、Node.jsでテストする
+- `manual.html` お店の人向けの説明書
 - `images/parking.jpg` お店で決めた駐車場の案内
 - `tests/` 自動テスト
 - `prototype-post-note.html` 参考にした試作版

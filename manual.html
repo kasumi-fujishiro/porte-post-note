@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>投稿ノートの使い方</title>
+<meta name="theme-color" content="#EDF1E8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151A16" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css?v=12">
+<style>
+  /* 説明書のページだけの見た目。色はアプリと同じ(css/style.css)を使う */
+  .doc { max-width: 720px; margin: 0 auto; }
+  .doc section { margin-bottom: 14px; scroll-margin-top: 12px; }
+  .doc h2 { font-size: 20px; margin: 0 0 12px; }
+  .doc h3 { font-size: 16px; font-weight: 900; margin: 18px 0 8px; }
+  .doc p, .doc li { font-size: 16px; line-height: 1.8; }
+  .doc p + p { margin-top: 8px; }
+  .doc ol, .doc ul { margin: 6px 0; padding-left: 1.4em; }
+  .doc li + li { margin-top: 4px; }
+  .doc b { font-weight: 900; }
+  .lead { font-size: 16px; }
+  .toc { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .toc a { display: flex; align-items: center; min-height: 48px; padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); text-decoration: none; font-weight: 700; }
+  .tip { border-left: 4px solid var(--accent); background: var(--bg); border-radius: 0 10px 10px 0; padding: 10px 12px; margin: 10px 0; }
+  .tip b:first-child { display: block; margin-bottom: 2px; }
+  .sched { display: grid; gap: 6px; margin: 8px 0; }
+  .sched div { display: grid; grid-template-columns: 6.5em 1fr; gap: 10px; align-items: start; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); }
+  .sched dt, .sched .d { font-weight: 900; }
+  .trouble { display: grid; gap: 8px; }
+  .trouble details { border: 1.5px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .trouble summary { cursor: pointer; padding: 12px 14px; font-weight: 700; min-height: 48px; list-style-position: inside; }
+  .trouble details > div { padding: 0 14px 12px; }
+  .back-top { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 16px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; text-decoration: none; }
+  .to-top { display: block; text-align: right; margin-top: 10px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app doc">
+  <header class="top">
+    <h1>投稿ノートの使い方</h1>
+    <a class="back-top" href="./">← アプリに戻る</a>
+  </header>
+
+  <section id="top">
+    <p class="lead">Instagramの投稿の画像を、えらぶだけで作るアプリです。言葉とデザインを、その場で考えなくて済むようにしてあります。投稿を作るだけなら、ログインはいりません。</p>
+    <h2 style="margin-top:14px">もくじ</h2>
+    <nav class="toc" aria-label="もくじ">
+      <a href="#open">開き方</a><a href="#eigyo">営業中</a><a href="#new">新作・季節</a><a href="#park">駐車場</a>
+      <a href="#cal">営業カレンダー</a><a href="#shop">お店の人用のページ</a><a href="#trouble">困ったとき</a><a href="#limits">分かっている限界</a>
+    </nav>
+  </section>
+
+  <section id="open">
+    <h2>1. 開き方</h2>
+    <ol>
+      <li>お店の裏に貼ってあるQRコードを、スマホのカメラで読みとる</li>
+      <li>開いたら、<b>ホーム画面に追加</b>しておくと、次からはアプリのように開けます
+        <ul>
+          <li>iPhone(Safari):下の「共有」ボタン(四角から上に矢印)→「ホーム画面に追加」</li>
+          <li>Android(Chrome):右上の「︙」→「ホーム画面に追加」</li>
+        </ul>
+      </li>
+    </ol>
+    <div class="tip"><b>LINEの中で開いたとき</b>画面の上に黄色い案内が出ます。保存や共有がうまく動かないことがあるので、右上(または右下)の「…」から「ブラウザで開く」をえらび、SafariかChromeで開いてください。</div>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="eigyo">
+    <h2>2. 営業中(毎日の投稿)</h2>
+    <ol>
+      <li>「営業中」をえらぶ</li>
+      <li>「写真をえらぶ」(または「その場で撮る」)で、ショーケースの写真を入れる</li>
+      <li>日付(今日)と「OPEN」は、自動で入ります</li>
+      <li>ひとことを入れるときは、状況(雨の日など)→ ひとこと の順にタップ。入れなくてもかまいません</li>
+      <li>写真の大事なところが文字で隠れるときは、「日付とOPENの位置」を「下」に。写真の上下の位置も、つまみで動かせます</li>
+      <li>「<b>共有する(Instagramへ)</b>」を押して、Instagramをえらぶ。または「画像を保存する」</li>
+    </ol>
+
+    <h3>写真の撮り方の決まり</h3>
+    <ul>
+      <li><b>縦長で撮る</b></li>
+      <li><b>商品のまわりに余白を残す</b>(上下に日付やひとことが入るので、商品がはしに寄りすぎないように)</li>
+    </ul>
+
+    <h3>出す前に見るところ</h3>
+    <ul>
+      <li><b>日付が今日か</b></li>
+      <li><b>文字が合っているか</b>(ひとことや商品名に、まちがいがないか)</li>
+    </ul>
+
+    <div class="tip"><b>途中でお客さんが来たら</b>そのまま閉じてかまいません。次に開くと、写真もえらんだ内容も、そのまま残っています(その日のうちだけ。次の日はまっさらから始まります)。次の投稿を作るときは「新しい投稿を作る」を押します。</div>
+    <div class="tip"><b>動画を上げるとき</b>動画には文字を入れられないので、「えらんだ ひとことをコピー」を押して、Instagramで貼り付けてください。</div>
+    <div class="tip"><b>iPhoneで保存するとき</b>「画像を保存する」だと、画像は「写真」ではなく「ファイル」アプリの「ダウンロード」に入ります。「写真」に入れたいときは、「共有する」から「画像を保存」をえらびます。どちらもうまくいかないときは「うまく保存できないとき」を押して、出てきた画像を長押しして保存します。</div>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="new">
+    <h2>3. 新作・季節</h2>
+    <ol>
+      <li>「新作・季節」をえらぶ</li>
+      <li>商品をえらぶ(お店の人用のページで登録したものだけが出ます)</li>
+      <li>写真を入れる</li>
+      <li>ラベル(NEW、季節限定、本日のおすすめ、なし)をえらぶ</li>
+      <li>共有する、または保存する</li>
+    </ol>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="park">
+    <h2>4. 駐車場</h2>
+    <p>「駐車場」をえらぶと、お店で決めた駐車場の案内の画像が入ります。大きさ(ストーリーズ、フィード投稿、店頭掲示 A4)をえらんで、共有するか保存してください。</p>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="cal">
+    <h2>5. 営業カレンダー</h2>
+    <ul>
+      <li>お店の人が確認した月のカレンダーだけを、画像にして保存できます</li>
+      <li>日にちを直すのは、お店の人用のページで行います</li>
+      <li>毎月20日ごろから、アプリのいちばん上に「◯月の営業日を確認してください」と出ます。お店の人に知らせてください</li>
+    </ul>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="shop">
+    <h2>6. お店の人用のページ(登録・確認)</h2>
+    <p>アプリの上の「<b>登録・確認(お店の人用)</b>」→「登録・確認のページを開く」で開きます。終わったら、上の「← アプリに戻る」で戻ります。</p>
+
+    <h3>初めて開くとき</h3>
+    <ol>
+      <li>Googleのログインを求められたら、<b>お店のシートを共有してもらったGoogleアカウント</b>でログインする</li>
+      <li>「このアプリはGoogleで確認されていません」と出たら、左下の「詳細」→「投稿ノート 管理(安全ではないページ)に移動」→「許可」。お店のために作ったものなので、問題ありません。最初の1回だけです</li>
+      <li>ページの上の「Google Apps Script のユーザーによって作成されたもの」という注意書きは、毎回出ますが、気にしなくて大丈夫です</li>
+    </ol>
+
+    <h3>ひとこと</h3>
+    <ul>
+      <li>「ひとことを足す」で、状況(今あるものをえらぶか、新しく書く)と、ひとことを入れて「登録する」</li>
+      <li>直すときは、その行の「直す」</li>
+      <li>使わなくなったものは「しまう」(2回押します)。消えずに「しまったもの」に入るので、いつでも「戻す」で戻せます</li>
+      <li><b>価格(500円、¥500 など)は登録できません</b>(お店の方針で、価格は載せません)</li>
+      <li>「例」の印がついたものは、最初に入れた見本です。直すと印が消えます</li>
+    </ul>
+
+    <h3>商品</h3>
+    <ul>
+      <li>商品名、ひとこと説明(味や特徴)、色をえらんで「登録する」</li>
+      <li>今は出していない商品は、消さずに「しまう」にしておくと、次の季節にまた使えます</li>
+    </ul>
+
+    <h3>AIに頼む文をコピーする</h3>
+    <ol>
+      <li>「こういう状況」(または商品名と短いメモ)を書く</li>
+      <li>「この文をコピー」を押して、無料のAI(GeminiやChatGPTなど)に貼り付ける</li>
+      <li>出てきた案を<b>読んでから</b>、使いたいものだけを、登録の欄に貼って登録する(メモにないことが足されていないか、確かめてください)</li>
+    </ol>
+
+    <h3>お店の設定</h3>
+    <p>営業時間、営業中の色、定休日、カレンダーの日程、カレンダーの投稿先(フィード/ストーリーズ)を変えられます。変えたら「設定を保存する」を押します。</p>
+
+    <h3>営業カレンダーの確認(毎月1回)</h3>
+    <div class="sched">
+      <div><span class="d">20日</span><span>アプリにお知らせが出て、LINEでも知らせが届く</span></div>
+      <div><span class="d">23日</span><span>まだ確認していなければ、もう一度LINEで知らせが届く</span></div>
+      <div><span class="d">25日の12時台</span><span>確認ずみなら、Instagramに自動で投稿される</span></div>
+      <div><span class="d">25日より後</span><span>確認していなければ、投稿されない。あとで確認すると、1時間以内に投稿される</span></div>
+    </div>
+    <ol>
+      <li>「カレンダー」のタブを開き、何月の分かをえらぶ(LINEやアプリのお知らせから開くと、その月が開きます)</li>
+      <li>定休日には、はじめから丸がついています。<b>変わる日だけ</b>タップします(1回で「お休み」、2回で「時間変更」、3回で「営業」)</li>
+      <li>必要なら、ひとこと(例:23日は営業します)を入れる</li>
+      <li>お休みの日数と、下の画像を見て、まちがいがなければ「<b>この内容でOK</b>」</li>
+      <li>「確認ずみにしました。…予約を作りました。画像も公開しました。」と出れば終わりです</li>
+    </ol>
+    <div class="tip"><b>確認のあとに直したとき</b>日にちを直して保存すると、確認と予約が取り消されます。もう一度「この内容でOK」を押してください。途中でやめるときは「途中まで保存する」を押します。</div>
+
+    <h3>最近の投稿(自動の投稿がうまくいかなかったとき)</h3>
+    <p>カレンダーのタブのいちばん下にあります。</p>
+    <ul>
+      <li><b>要確認</b>:投稿できたか分かりません。Instagramを見て、出ていれば「投稿済みにする」、出ていなければ「もう一度出す」</li>
+      <li><b>失敗</b>:自動で投稿できませんでした。「もう一度出す」か、下の「手で投稿するとき」で投稿してください</li>
+    </ul>
+
+    <h3>手で投稿するとき</h3>
+    <p>カレンダーのタブの「手で投稿するとき」で「画像を保存する」を押し、Instagramのアプリで予約投稿してください。自動の投稿が止まっても、いつでもこの方法で出せます。</p>
+
+    <h3>作業時間の記録</h3>
+    <p>「作業時間」のタブで、全員の記録(投稿を作りはじめてから、保存か共有をするまでの秒数)と平均を見られます。「表計算ソフトに貼れる形でコピー」で、表計算ソフトに貼り付けられます。名前や端末の情報は入っていません。</p>
+
+    <h3>登録できる人</h3>
+    <p>登録できる人は、<b>お店のシートの共有</b>だけで決まります。</p>
+    <ul>
+      <li>足す:「そのほか」のタブの「シートを開く」→ 右上の「共有」→ その人のGoogleアカウントを入れ、「<b>編集者</b>」をえらんで送る</li>
+      <li>外す:同じ画面で、その人の「編集者」→「アクセス権を削除」</li>
+    </ul>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="trouble">
+    <h2>7. 困ったとき</h2>
+    <p class="hint">こまっていることを押すと、することが出ます。</p>
+    <div class="trouble">
+      <details><summary>アプリが開かない</summary><div><p>電波のある所で開き直してください。一度開いたことがあれば、電波がなくても開けます。</p></div></details>
+      <details><summary>古い画面のまま</summary><div><p>読み込み直してください(Safariならアドレスの横の「↻」)。直してから数分は、古いものが出ることがあります。数分おいて、もう一度読み込み直してください。</p></div></details>
+      <details><summary>画像を保存できない</summary><div><p>「うまく保存できないとき」を押して、出てきた画像を長押しして保存してください。</p></div></details>
+      <details><summary>LINEの中で開いてしまった</summary><div><p>「…」→「ブラウザで開く」をえらんで、SafariかChromeで開いてください。</p></div></details>
+      <details><summary>「このアカウントでは、お店のシートを開けません」と出た</summary><div><p>そのGoogleアカウントに、シートが共有されていません。持ち主に「編集者」として共有してもらってください。ちがうアカウントで開いていたら、切りかえてください。</p></div></details>
+      <details><summary>「読みこめませんでした」と出た</summary><div><p>Googleのアカウントに2つ以上ログインしていると起きることがあります。使うアカウント1つだけでログインし直すか、プライベートブラウズ(シークレットウィンドウ)で開いてください。</p></div></details>
+      <details><summary>「ほかの人が先に変えました」と出た</summary><div><p>ほかの人が同じときに直しました。新しい内容が読み直されているので、確かめてから、もう一度押してください。</p></div></details>
+      <details><summary>アプリやページの上に、黄色い知らせが出た</summary><div>
+        <ul>
+          <li>「投稿できたか分かりません」:お店の人用のページの「最近の投稿」で決めてください</li>
+          <li>「鍵(トークン)が使えなくなりました」「2日以上動いていません」:管理する人に知らせてください</li>
+          <li>どの場合も、その月の分は「手で投稿するとき」で出せます</li>
+        </ul>
+      </div></details>
+    </div>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+
+  <section id="limits">
+    <h2>8. 分かっている限界</h2>
+    <ul>
+      <li>自動の投稿は12時ちょうどではなく、<b>12時台</b>に出ます</li>
+      <li>確認のお知らせは、アプリを開いたときと、LINEでだけ届きます(スマホの通知としては出ません)</li>
+      <li>お店の人用のページの上には、Googleの注意書きが出ます。初めて開くときだけ、許可の画面が出ます</li>
+      <li>ひとこと、商品、設定、確認ずみのカレンダーは、アプリのURLを知っていれば誰でも見られます。<b>お客さんに見せてよい内容だけ</b>を登録してください</li>
+      <li>作りかけの内容と写真は、スマホごとに保存されます(ほかの人のスマホには出ません)。写真は、スマホの外に送りません</li>
+      <li>Instagramに投稿するための鍵は、およそ90日ごとに作り直しが必要になるかもしれません。その前にLINEで知らせが届くので、管理する人に頼んでください</li>
+      <li>アプリのURLは、シェフの名義に移すときに1回変わります。そのときは、新しいQRコードからホーム画面に追加し直してください</li>
+    </ul>
+    <a class="to-top" href="#top">もくじへ ↑</a>
+  </section>
+</div>
+</body>
+</html>
