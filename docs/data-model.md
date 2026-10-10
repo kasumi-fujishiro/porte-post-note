@@ -154,29 +154,49 @@ erDiagram
 
 ```mermaid
 flowchart LR
-  staff["スタッフの画面<br>(GitHub Pages)"]
-  admin["管理ページ<br>(GAS「投稿ノート 管理」<br>開いた本人として実行)"]
-  ext["ほかのアプリ"]
-  pub["公開窓口<br>(GAS「投稿ノート」<br>持ち主として実行)"]
-  job["毎日の自動実行<br>(持ち主として実行)"]
-  sheet[("スプレッドシート")]
-  drive[("ドライブの原本")]
-  gh[("GitHub calendar/")]
-  ig["Instagram"]
-  line["LINE(お店の中だけ)"]
-
-  staff -- "GET 配信データ / POST 作業時間" --> pub
-  ext -. "GET 配信データ(読むだけ)" .-> pub
-  admin -- "読み書き(本人の権限。シートの共有が必要)" --> sheet
-  admin -- "POST カレンダーの画像(合言葉つき)" --> pub
-  pub -- "読む / 作業時間を追記 / 予約に画像を結びつける" --> sheet
-  pub --> drive
-  pub --> gh
-  job -- "予約を読み、状態を書く" --> sheet
-  job --> gh
-  job -- "ページのトークンで投稿" --> ig
-  job --> line
+  subgraph U["使う人の画面"]
+    staff["スタッフの画面<br>GitHub Pages"]
+    admin["管理ページ<br>開いた本人として実行"]
+    ext["ほかのアプリ"]
+  end
+  subgraph G["GAS(持ち主として実行)"]
+    pub["公開窓口"]
+    job["毎日の自動実行"]
+  end
+  subgraph S["置き場所"]
+    sheet[("スプレッドシート")]
+    drive[("ドライブの原本")]
+    gh[("GitHub calendar/")]
+  end
+  subgraph O["外のサービス"]
+    ig["Instagram"]
+    line["LINE"]
+  end
+  staff -->|"①"| pub
+  ext -.->|"②"| pub
+  admin -->|"③"| sheet
+  admin -->|"④"| pub
+  pub -->|"⑤"| sheet
+  pub -->|"⑥"| drive
+  pub -->|"⑥"| gh
+  job -->|"⑦"| sheet
+  job -->|"⑧"| gh
+  job -->|"⑨"| ig
+  job -->|"⑩"| line
 ```
+
+| 番号 | やり取り |
+|---|---|
+| ① | スタッフの画面が、配信データを読む(GET)。作業時間の記録を送る(POST) |
+| ② | ほかのアプリが、配信データを読む(GET。読むだけ) |
+| ③ | 管理ページが、開いた本人の権限でシートを読み書きする(シートの共有が必要) |
+| ④ | 管理ページが、カレンダーの画像を、使い捨ての合言葉と一緒に送る(POST) |
+| ⑤ | 公開窓口が、シートを読む。作業時間を追記する。予約に画像を結びつける |
+| ⑥ | 公開窓口が、画像の原本をドライブに、公開用の写しをGitHubに置く |
+| ⑦ | 自動実行が、予約を読み、状態を書く。動作記録を書く |
+| ⑧ | 自動実行が、まだ公開していない画像をGitHubに置く(やり直し) |
+| ⑨ | 自動実行が、ページのトークンでInstagramに投稿する |
+| ⑩ | 自動実行が、確認のお知らせや失敗をLINEで送る |
 
 | 入り口 | だれが | できること |
 |---|---|---|
