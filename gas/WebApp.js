@@ -67,10 +67,13 @@ function json_(obj) {
 
 // 配信データ。版番号が変わるまでは、作ったものを使い回す(シートのほかの表を毎回読まないため)
 // 版番号はシートから読む(管理ページは別のプロジェクトなので、ここの設定欄は書きかえられない)
+// 配信データの形を変えたら、この番号を上げる(保存してある古い形を使わないため)
+const FEED_FORMAT = 2;
+
 function feedData_() {
-  // 版番号に加えて、最後に正しく動いた日時と、トークンの状態が変わったら作り直す
+  // 版番号と形の番号に加えて、最後に正しく動いた日時と、トークンの状態が変わったら作り直す
   const lastOk = prop_('LAST_OK_AT', false), tokenBad = prop_('TOKEN_BAD', false) === 'yes';
-  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = `feed:${v}:${lastOk}:${tokenBad}`;
+  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = `feed${FEED_FORMAT}:${v}:${lastOk}:${tokenBad}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars'), reservations: readTable_('reservations') };
