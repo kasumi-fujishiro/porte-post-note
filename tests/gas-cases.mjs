@@ -93,6 +93,21 @@ export const gasCases = [
     const r = G('validateLogBatch')(body, NOW);
     eq(r.records.length, 1); eq(r.rejected, 5); eq('name' in r.records[0], false);
   }],
+  ['記録:画面の形は、L/S/A/C か空だけ受けつける', eq => {
+    const v = G('validateLogBatch'), base = { at: '2026-10-10 11:58', kind: 'open', fmt: 'story', sec: 10 };
+    eq(v(JSON.stringify({ records: [{ ...base, layout: 'C' }] }), NOW).records[0].layout, 'C');
+    eq(v(JSON.stringify({ records: [{ ...base }] }), NOW).records[0].layout, '');
+    eq(v(JSON.stringify({ records: [{ ...base, layout: 'Z' }] }), NOW).records.length, 0);
+  }],
+  ['記録のまとめ:画面の形ごとの回数と平均', eq => {
+    const s = G('logSummary')([{ at: '2026-10-10 10:00', sec: '10', layout: 'A' }, { at: '2026-10-10 10:01', sec: '20', layout: 'A' }, { at: '2026-10-10 10:02', sec: '30', layout: '' }]);
+    eq(s.byLayout.A.avg, 15); eq(s.byLayout.A.count, 2); eq(s.byLayout['-'].count, 1);
+  }],
+  ['設定:画面の形とよく使う組み合わせ', eq => {
+    const p = []; const s = G('readSettings')(settingsRows({ layout: 'C', quick: 'a1, b2' }), p);
+    eq(s.layout, 'C'); eq(JSON.stringify(s.quick), '["a1","b2"]'); eq(p.length, 0);
+    const p2 = []; eq(G('readSettings')(settingsRows({ layout: 'X' }), p2).layout, 'L'); eq(p2.length, 1);
+  }],
   ['記録:1回に21件以上は受けつけない。JSONでないものも受けつけない', eq => {
     const many = Array.from({ length: 21 }, () => ({ at: '2026-10-10 11:58', kind: 'open', fmt: 'story', sec: 5 }));
     eq(G('validateLogBatch')(JSON.stringify({ records: many }), NOW).records.length, 0);

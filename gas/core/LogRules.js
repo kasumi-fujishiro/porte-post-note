@@ -24,7 +24,9 @@ function validateLogBatch(body, nowMs) {
       && LOG_KINDS.includes(r.kind) && LOG_FMTS.includes(r.fmt)
       && Number.isInteger(r.sec) && r.sec >= 1 && r.sec <= LOG_LIMITS.maxSec
       && Math.abs(parseJstMinute(r.at) - nowMs) <= 24 * 3600 * 1000;
-    if (ok) records.push({ at: r.at, kind: r.kind, fmt: r.fmt, sec: r.sec }); // 決まった項目だけを取り出す
+    // 画面の形は、なくてもよい(前の版のアプリから届く記録のため)
+    const layout = r && LAYOUT_KEYS.includes(r.layout) ? r.layout : '';
+    if (ok && (r.layout == null || r.layout === '' || layout)) records.push({ at: r.at, kind: r.kind, fmt: r.fmt, sec: r.sec, layout }); // 決まった項目だけを取り出す
     else rejected++;
   }
   return { records, rejected, error: '' };

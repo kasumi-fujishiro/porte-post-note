@@ -21,7 +21,7 @@ const SHEETS = {
       ['imageSize', '画像の大きさ'], ['imageHash', 'ハッシュ値'], ['driveFileId', '原本のファイルID'], ['containerId', '下書きID'],
       ['mediaId', '投稿ID'], ['tries', 'やり直した回数'], ['lastError', '最後のエラー'], ['createdAt', '作成日時'], ['updatedAt', '更新日時'], ['publishedAt', '画像を公開した日時'], ['ticket', '受け渡しの合言葉'], ['phase', '進み具合'], ['tokenBad', 'トークンが使えない'], ['permalink', '投稿のリンク']]
   },
-  logs: { name: '作業時間', cols: [['receivedAt', '受けた日時'], ['at', '日時'], ['kind', '種類'], ['fmt', '大きさ'], ['sec', '秒']] },
+  logs: { name: '作業時間', cols: [['receivedAt', '受けた日時'], ['at', '日時'], ['kind', '種類'], ['fmt', '大きさ'], ['sec', '秒'], ['layout', '画面の形']] },
   runs: { name: '動作記録', cols: [['at', '日時'], ['job', '処理'], ['result', '結果'], ['detail', '内容']] }
 };
 
@@ -36,6 +36,8 @@ const SETTING_ROWS = [
   ['postDay', '25', 'カレンダーを投稿する日(前の月)'],
   ['postHour', '12', 'カレンダーを投稿する時(0〜23)'],
   ['postTo', 'feed', 'カレンダーの投稿先(feed=フィード / story=ストーリーズ)'],
+  ['layout', 'L', 'スタッフの画面の形(L=今の形 / S=1画面ずつ / A=できあがり中心 / C=よく使う組み合わせ)'],
+  ['quick', '', '形Cの最初の画面に並べる、ひとことのID(カンマで区切る。4つまで)'],
   ['firstUse', '', '使い始めた日(2026-10-17 の形)。この日より前に出す予定だった月は、知らせない'],
   ['lastOkAt', '', '毎日の自動実行が、最後に正しく動いた日時(自動で入る)']
 ];
@@ -45,6 +47,7 @@ const CAL_STATES = ['未確認', '確認済み'];
 const RES_STATES = ['確認済み', '投稿中', '投稿済み', '失敗', '要確認', '取り消し'];
 const LOG_KINDS = ['open', 'new', 'park', 'cal'];
 const LOG_FMTS = ['story', 'feed', 'a4'];
+const LAYOUT_KEYS = ['L', 'S', 'A', 'C'];
 
 // 見出しの行(日本語)を、コードの中の名前に読みかえる
 function headerKeys(sheetKey, headerRow) {
@@ -65,4 +68,4 @@ function rowsToObjects(sheetKey, values) {
   // チェックボックスの欄は、空の行でも「FALSE」と読めるので、それだけの行は空の行として外す
 }
 
-if (typeof module !== 'undefined') module.exports = { SHEETS, SETTING_ROWS, COLORS, CAL_STATES, RES_STATES, LOG_KINDS, LOG_FMTS, headerKeys, rowsToObjects };
+if (typeof module !== 'undefined') module.exports = { SHEETS, SETTING_ROWS, COLORS, CAL_STATES, RES_STATES, LOG_KINDS, LOG_FMTS, LAYOUT_KEYS, headerKeys, rowsToObjects };

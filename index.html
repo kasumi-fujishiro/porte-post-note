@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=13">
-<script type="module" src="js/app.js?v=13"></script>
+<link rel="stylesheet" href="css/style.css?v=14">
+<script type="module" src="js/app.js?v=14"></script>
 </head>
 <body>
 <div class="app">
@@ -66,7 +66,7 @@
       </div>
 
       <div class="stack" id="fs-open">
-        <div class="row">
+        <div class="row" id="posRow">
           <div class="field grow"><label for="f-date">日付</label><input type="date" id="f-date"></div>
           <div class="field grow"><span id="l-pos">日付とOPENの位置</span>
             <div class="seg" role="radiogroup" aria-labelledby="l-pos">
@@ -74,11 +74,11 @@
             </div>
           </div>
         </div>
-        <div class="field"><span id="l-cat">ひとこと(えらばなくてもかまいません)</span>
+        <div class="field" id="phraseField"><span id="l-cat">ひとこと(えらばなくてもかまいません)</span>
           <div class="chips" id="catChips" role="radiogroup" aria-labelledby="l-cat"></div>
           <div class="chips words" id="phraseChips" role="radiogroup" aria-label="ひとこと"></div>
         </div>
-        <div class="row"><button type="button" class="small" id="phraseCopy">えらんだ ひとことをコピー(動画に貼るとき)</button><span class="status" id="s-phrase" aria-live="polite"></span></div>
+        <div class="row" id="copyRow"><button type="button" class="small" id="phraseCopy">えらんだ ひとことをコピー(動画に貼るとき)</button><span class="status" id="s-phrase" aria-live="polite"></span></div>
       </div>
 
       <div class="stack" id="fs-new" hidden>
@@ -104,14 +104,14 @@
         <label><input type="radio" name="fmt" id="fmt-feed" value="feed">フィード投稿</label>
         <label><input type="radio" name="fmt" id="fmt-a4" value="a4">店頭掲示 A4</label>
       </div>
-      <div class="stage"><canvas id="cv" width="1080" height="1920" aria-label="できあがった画像のプレビュー"></canvas></div>
-      <div class="row center">
+      <div class="stage" id="stage"><canvas id="cv" width="1080" height="1920" aria-label="できあがった画像のプレビュー"></canvas></div>
+      <div class="row center" id="actions">
         <button type="button" class="primary big" id="shareBtn" hidden>共有する(Instagramへ)</button>
         <button type="button" class="big" id="saveBtn">画像を保存する</button>
       </div>
       <p class="timer center" id="timer">作業時間 0:00</p>
       <p class="status center" id="status" aria-live="polite"></p>
-      <div class="row center">
+      <div class="row center" id="extraRow">
         <button type="button" class="small" id="fallbackBtn">うまく保存できないとき</button>
         <button type="button" class="small" id="newBtn">新しい投稿を作る</button>
       </div>

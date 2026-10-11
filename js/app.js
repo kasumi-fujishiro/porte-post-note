@@ -1,12 +1,13 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=13';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=13';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=13';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=13';
-import { monthInfo, noticeFor } from './calendar.js?v=13';
-import { CONFIG } from '../config.js?v=13';
-import { ls, photoStore } from './store.js?v=13';
-import { draw } from './draw.js?v=13';
+import { FORMATS, KINDS } from './data.js?v=14';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=14';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=14';
+import { chooseLayout, applyLayout } from './layout.js?v=14';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=14';
+import { monthInfo, noticeFor } from './calendar.js?v=14';
+import { CONFIG } from '../config.js?v=14';
+import { ls, photoStore } from './store.js?v=14';
+import { draw } from './draw.js?v=14';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -65,7 +66,7 @@ function record() {
   const at = `${iso(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   log.unshift({ at, kind: KINDS[radio('kind')], fmt: FORMATS[radio('fmt')].name, sec });
   ls.set('pn-log', log.slice(0, LOG_MAX)); saveDraft();
-  enqueueLog({ at, kind: radio('kind'), fmt: radio('fmt'), sec });
+  enqueueLog({ at, kind: radio('kind'), fmt: radio('fmt'), sec, layout });
   $('#timer').textContent = `作業時間 ${fmtSec(sec)}(記録しました)`; $('#timer').classList.remove('on');
   paintLog();
 }
@@ -130,6 +131,7 @@ async function pickPhoto(file) {
     const kept = blob && await photoStore.set({ day: todayIso, blob });
     $('#photoPos').value = 50; saveDraft();
     setPhoto(c, kept ? '写真が入っています。' : '写真が入っています。(この端末には残せませんでした。読み込み直すと消えます)');
+    window.dispatchEvent(new Event('pn:photo')); // 形C:撮り終わったら仕上げの画面へ
   } catch {
     $('#photoState').textContent = 'この写真は読み込めませんでした。別の写真をえらんでください。';
   }
@@ -227,7 +229,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=13';
+parkImg.src = 'images/parking.jpg?v=14';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
@@ -371,6 +373,8 @@ function paintFeedInfo(state) {
 }
 async function refreshFeed() {
   const [f, state] = await fetchFeed(data);
+  // お店の設定で画面の形が変わっていたら、まだ作りはじめていなければ、読み込み直して新しい形にする
+  if (f && chooseLayout(f.settings.layout) !== layout && !t0) { location.reload(); return; }
   if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); saveDraft(); changed(); }
   paintFeedInfo(state);
 }
@@ -381,5 +385,18 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); paintLog(); paintFeedInfo();
+
+// ---------- 画面の形(L:今の形 S:1画面ずつ A:できあがり中心 C:よく使う組み合わせ) ----------
+const layout = chooseLayout(data.settings.layout);
+applyLayout(layout, {
+  kind: () => radio('kind'),
+  setKind: k => { const el = $(`input[name=kind][value="${k}"]`); if (el && !el.disabled) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); } },
+  // よく使う組み合わせ(管理ページで決めていなければ、最初の3つ)
+  quickItems: () => [{ id: '', label: 'ひとことなし' }, ...((data.settings.quick || []).length ? data.settings.quick : data.phrases.slice(0, 3).map(p => p.id)).map(id => data.phrases.find(p => p.id === id)).filter(Boolean).map(p => ({ id: p.id, label: `${p.cat}:${p.text}` }))],
+  setPhrase: id => { curPhrase = id; const p = data.phrases.find(x => x.id === id); if (p) curCat = p.cat; paintPhrases(); saveDraft(); changed(); },
+  cameraMode: () => ls.get('pn-cmode', 'cam'),
+  setCameraMode: m => ls.set('pn-cmode', m)
+});
+window.addEventListener('pn:layout', () => changed());
 refreshFeed(); flushLogs(); showTimer(recorded ? '(記録しました)' : ''); startTick(); showTab();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());

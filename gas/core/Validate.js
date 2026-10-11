@@ -46,6 +46,9 @@ function readSettings(rows, problems) {
   else { bad('regular', '0〜6の数をカンマで区切ってください'); s.regular = [1, 2]; }
   s.schedule = { notice1: num('notice1', 1, 28, 20), notice2: num('notice2', 1, 28, 23), postDay: num('postDay', 1, 28, 25), postHour: num('postHour', 0, 23, 12) };
   s.postTo = ['feed', 'story'].includes(get('postTo')) ? get('postTo') : (bad('postTo', 'feed か story にしてください'), 'feed');
+  s.layout = LAYOUT_KEYS.includes(get('layout')) ? get('layout') : (get('layout') ? (bad('layout', `${LAYOUT_KEYS.join(' / ')} のどれかにしてください`), 'L') : 'L');
+  const quick = get('quick').replace(/\s/g, '');
+  s.quick = quick ? quick.split(',').filter(Boolean).slice(0, 4) : [];
   s.firstUse = get('firstUse');
   if (s.firstUse && !isIsoDate(s.firstUse)) { bad('firstUse', '2026-10-17 の形にしてください'); s.firstUse = ''; }
   s.lastOkAt = get('lastOkAt');

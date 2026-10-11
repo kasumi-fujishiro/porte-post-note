@@ -157,6 +157,11 @@
           <label><input type="radio" name="postTo" value="feed">フィード</label><label><input type="radio" name="postTo" value="story">ストーリーズ</label>
         </div>
       </div>
+      <div class="field"><label for="s-layout">スタッフの画面の形(全員のアプリが、この形になります)</label>
+        <select id="s-layout"><option value="L">今の形(下にスクロールする)</option><option value="S">1画面ずつ順に進む</option><option value="A">できあがり中心(1画面)</option><option value="C">よく使う組み合わせ</option></select>
+        <span class="hint">形ごとの作業時間は「作業時間」のタブで比べられます。1台だけ試すときは、アプリのURLの後ろに ?layout=a のようにつけて開きます(?layout=auto で戻ります)。</span></div>
+      <div class="field"><span id="l-quick">「よく使う組み合わせ」の形で、最初に並べるひとこと(4つまで)</span>
+        <div class="checks" id="s-quick" role="group" aria-labelledby="l-quick"></div></div>
       <div class="row"><button type="button" class="primary needs-edit" id="s-save">設定を保存する</button></div>
     </section>
 
@@ -165,7 +170,7 @@
       <h2>作業時間の記録(全員の分)</h2>
       <p class="hint">アプリで内容に触りはじめてから、保存か共有をするまでの秒数です。名前や端末の情報は入っていません。</p>
       <p class="avg" id="logAvg"></p>
-      <div class="scroll"><table><thead><tr><th>日時</th><th>種類</th><th>大きさ</th><th>秒</th></tr></thead><tbody id="logRows"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>日時</th><th>種類</th><th>大きさ</th><th>形</th><th>秒</th></tr></thead><tbody id="logRows"></tbody></table></div>
       <div class="row"><button type="button" id="logCopy">表計算ソフトに貼れる形でコピー</button></div>
     </section>
 
@@ -190,10 +195,10 @@
 
 <script type="module">
 const APP = '<?= appUrl ?>', START_TAB = '<?= startTab ?>', START_MONTH = '<?= startMonth ?>';
-const { draw } = await import(APP + 'js/draw.js?v=13');
-const { FORMATS } = await import(APP + 'js/data.js?v=13');
-const CAL = await import(APP + 'js/calendar.js?v=13');
-const { CONFIG } = await import(APP + 'config.js?v=13');
+const { draw } = await import(APP + 'js/draw.js?v=14');
+const { FORMATS } = await import(APP + 'js/data.js?v=14');
+const CAL = await import(APP + 'js/calendar.js?v=14');
+const { CONFIG } = await import(APP + 'config.js?v=14');
 {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -258,11 +263,15 @@ const { CONFIG } = await import(APP + 'config.js?v=13');
     document.querySelectorAll('#s-regular input').forEach(el => { el.checked = reg.includes(+el.value); });
     ['notice1', 'notice2', 'postDay', 'postHour'].forEach(k => { $('#s-' + k).value = st[k] || ''; });
     document.querySelectorAll('input[name=postTo]').forEach(el => { el.checked = el.value === (st.postTo || 'feed'); });
+    $('#s-layout').value = st.layout || 'L';
+    const quick = String(st.quick || '').split(',').filter(Boolean);
+    $('#s-quick').innerHTML = S.phrases.filter(p => !p.hidden).map(p => `<label><input type="checkbox" value="${p.id}"${quick.includes(p.id) ? ' checked' : ''}>${esc(p.cat)}:${esc(p.text)}</label>`).join('') || '<span class="hint">ひとことがまだありません。</span>';
   }
   function paintLogs() {
     const L = S.logs;
-    $('#logAvg').textContent = L.count ? `${L.count}回の平均は ${L.avg}秒 です。` : 'まだ記録がありません。';
-    $('#logRows').innerHTML = L.rows.map(r => `<tr><td>${esc(r.at)}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc(FMT[r.fmt] || r.fmt)}</td><td>${r.sec}</td></tr>`).join('');
+    const NAMES = { L: '今の形', S: '1画面ずつ', A: 'できあがり中心', C: 'よく使う組み合わせ', '-': '形の記録なし' };
+    $('#logAvg').textContent = L.count ? `${L.count}回の平均は ${L.avg}秒 です。` + Object.entries(L.byLayout || {}).map(([k, v]) => ` / ${NAMES[k] || k}:${v.count}回、平均 ${v.avg}秒`).join('') : 'まだ記録がありません。';
+    $('#logRows').innerHTML = L.rows.map(r => `<tr><td>${esc(r.at)}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc(FMT[r.fmt] || r.fmt)}</td><td>${esc(r.layout || '')}</td><td>${r.sec}</td></tr>`).join('');
   }
   function paintProblems() {
     $('#problems').innerHTML = S.problems.map(p => `<div class="item"><div><b>シート「${esc(p.sheet)}」の ${p.row}行め</b><br><span class="hint">${esc(p.why)}</span></div></div>`).join('')
@@ -325,7 +334,9 @@ const { CONFIG } = await import(APP + 'config.js?v=13');
     hours: $('#s-hours').value, theme: $('#s-theme').value,
     regular: [...document.querySelectorAll('#s-regular input:checked')].map(el => el.value).join(','),
     notice1: $('#s-notice1').value, notice2: $('#s-notice2').value, postDay: $('#s-postDay').value, postHour: $('#s-postHour').value,
-    postTo: (document.querySelector('input[name=postTo]:checked') || {}).value || 'feed'
+    postTo: (document.querySelector('input[name=postTo]:checked') || {}).value || 'feed',
+    layout: $('#s-layout').value,
+    quick: [...document.querySelectorAll('#s-quick input:checked')].map(el => el.value).join(',')
   }));
 
   // ---------- AIに頼む文 ----------
@@ -344,7 +355,7 @@ const { CONFIG } = await import(APP + 'config.js?v=13');
     catch { $('#' + b.dataset.copy).select(); say('自動でコピーできませんでした。文が選ばれた状態なので、長押し(パソコンは command + C)でコピーしてください。', true); }
   });
   $('#logCopy').addEventListener('click', async () => {
-    const tsv = ['日時\t種類\t大きさ\t秒', ...S.logs.rows.map(r => [r.at, KIND[r.kind] || r.kind, FMT[r.fmt] || r.fmt, r.sec].join('\t'))].join('\n');
+    const tsv = ['日時\t種類\t大きさ\t形\t秒', ...S.logs.rows.map(r => [r.at, KIND[r.kind] || r.kind, FMT[r.fmt] || r.fmt, r.layout || '', r.sec].join('\t'))].join('\n');
     try { await navigator.clipboard.writeText(tsv); say('コピーしました。表計算ソフトに貼り付けられます。'); } catch { say('コピーできませんでした。', true); }
   });
 

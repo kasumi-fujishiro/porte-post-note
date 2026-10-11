@@ -103,7 +103,7 @@ function appendLogs_(body) {
     const n = allowedCount(records.length, usedMinute, usedDay);
     if (n > 0) {
       const receivedAt = nowText_();
-      appendRows_('logs', records.slice(0, n).map(r => ({ receivedAt, at: r.at, kind: r.kind, fmt: r.fmt, sec: String(r.sec) })));
+      appendRows_('logs', records.slice(0, n).map(r => ({ receivedAt, at: r.at, kind: r.kind, fmt: r.fmt, sec: String(r.sec), layout: r.layout || '' })));
       cache.put(minKey, String(usedMinute + n), 120);
       setProp_('LOG_DAY', `${day}:${usedDay + n}`);
     }

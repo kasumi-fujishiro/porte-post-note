@@ -11,7 +11,7 @@
 ```mermaid
 erDiagram
     SETTINGS {
-        string key PK "version, hours, theme, regular, notice1, notice2, postDay, postHour, postTo, firstUse, lastOkAt"
+        string key PK "version, hours, theme, regular, notice1, notice2, postDay, postHour, postTo, layout, quick, firstUse, lastOkAt"
         string value
         string note "説明"
     }
@@ -69,6 +69,7 @@ erDiagram
         string kind "open / new / park / cal"
         string fmt "story / feed / a4"
         int sec "1〜3600"
+        string layout "画面の形 L / S / A / C(空でもよい)"
     }
     RUNS {
         string at
@@ -233,6 +234,8 @@ GET {feedUrl}?api=feed
     "regular": [1, 2],
     "schedule": { "notice1": 20, "notice2": 23, "postDay": 25, "postHour": 12 },
     "postTo": "feed",
+    "layout": "L",
+    "quick": ["p1", "p3"],
     "firstUse": "2026-10-10"
   },
   "phrases":  [{ "id": "3b19dc1a76", "cat": "雨の日", "text": "足元にお気をつけてお越しください", "ex": true }],
@@ -262,7 +265,7 @@ GET {feedUrl}?api=feed
 POST {feedUrl}
 Content-Type: text/plain
 
-{"records":[{"at":"2026-10-20 11:58","kind":"open","fmt":"story","sec":18}]}
+{"records":[{"at":"2026-10-20 11:58","kind":"open","fmt":"story","sec":18,"layout":"A"}]}
 ```
 
 - `Content-Type` を `text/plain` にすると、ブラウザから送るときに前もっての問い合わせがいらない
@@ -270,6 +273,7 @@ Content-Type: text/plain
 - `kind`:`open`(営業中)/ `new`(新作・季節)/ `park`(駐車場)/ `cal`(営業カレンダー)
 - `fmt`:`story` / `feed` / `a4`
 - `sec`:1〜3600の整数
+- `layout`:画面の形 `L`(今の形)/ `S`(1画面ずつ)/ `A`(できあがり中心)/ `C`(よく使う組み合わせ)。なくてもよい(前の版のアプリのため)
 - 1回に20件まで。ほかの項目は捨てる
 - 返り値:`{"ok":true,"accepted":1,"rejected":0}`。混み合っているときは `{"ok":false,"retry":true,…}`(送り直してよい)
 

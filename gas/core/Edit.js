@@ -25,12 +25,15 @@ function cleanProduct(input) {
 }
 
 // 管理ページで直せる設定
-const EDITABLE_SETTINGS = ['hours', 'theme', 'regular', 'notice1', 'notice2', 'postDay', 'postHour', 'postTo'];
+const EDITABLE_SETTINGS = ['hours', 'theme', 'regular', 'notice1', 'notice2', 'postDay', 'postHour', 'postTo', 'layout', 'quick'];
 
 function cleanSettings(input) {
   const v = {};
   EDITABLE_SETTINGS.forEach(k => { v[k] = clean(input && input[k]); });
   v.regular = v.regular.replace(/\s/g, '');
+  v.quick = v.quick.replace(/\s/g, '');
+  if (v.quick.split(',').filter(Boolean).length > 4) return { error: 'よく使う組み合わせは、4つまでにしてください。' };
+  if (!v.layout) v.layout = 'L';
   const problems = [];
   readSettings(EDITABLE_SETTINGS.map((k, i) => ({ row: i + 2, key: k, value: v[k] })).concat([{ row: 99, key: 'version', value: '1' }]), problems);
   if (problems.length) return { error: '設定に合わないところがあります:' + problems.map(p => p.why).join('、') };
@@ -42,10 +45,14 @@ function cleanSettings(input) {
 
 // 作業時間の記録のまとめ(新しい順)
 function logSummary(rows, limit) {
-  const list = rows.filter(r => /^\d+$/.test(r.sec || '')).map(r => ({ receivedAt: r.receivedAt, at: r.at, kind: r.kind, fmt: r.fmt, sec: +r.sec }))
+  const list = rows.filter(r => /^\d+$/.test(r.sec || '')).map(r => ({ receivedAt: r.receivedAt, at: r.at, kind: r.kind, fmt: r.fmt, sec: +r.sec, layout: r.layout || '' }))
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   const avg = list.length ? Math.round(list.reduce((s, r) => s + r.sec, 0) / list.length) : 0;
-  return { count: list.length, avg, rows: list.slice(0, limit || 200) };
+  // 画面の形ごとの回数と平均(形の記録がないものは「記録なし」)
+  const byLayout = {};
+  list.forEach(r => { const k = r.layout || '-'; (byLayout[k] = byLayout[k] || { count: 0, total: 0 }); byLayout[k].count++; byLayout[k].total += r.sec; });
+  Object.keys(byLayout).forEach(k => { byLayout[k].avg = Math.round(byLayout[k].total / byLayout[k].count); delete byLayout[k].total; });
+  return { count: list.length, avg, byLayout, rows: list.slice(0, limit || 200) };
 }
 
 if (typeof module !== 'undefined') module.exports = { cleanPhrase, cleanProduct, cleanSettings, logSummary, EDITABLE_SETTINGS };
