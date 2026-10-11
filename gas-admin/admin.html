@@ -131,7 +131,7 @@
       </div>
       <div class="box stack">
         <h3 style="margin:0">最近の投稿</h3>
-        <p class="hint">「要確認」は、投稿できたか分からないものです。Instagramを見て、出ていれば「投稿済みにする」、出ていなければ「もう一度出す」を押してください。</p>
+        <p class="hint">「要確認」は、投稿できたか分からないものです。Instagramを見て、出ていれば「投稿済みにする」、出ていなければ「もう一度出す」を押してください。手で投稿したなど、自動で出さなくてよいときは「取り消す」(2回押す)。</p>
         <div class="list" id="recent"></div>
       </div>
       <div class="row"><button type="button" class="small" id="noticeTest">お知らせの表示を試す</button>
@@ -454,12 +454,26 @@ const { CONFIG } = await import(APP + 'config.js?v=12');
       // 営業カレンダーは「投稿する日」、試しの投稿は「作った日時」を出す
       const label = isCal ? `${+r.month.slice(5)}月の営業カレンダー` : '試しの投稿';
       const when = isCal ? `${r.postDate || ''}に投稿` : `${(r.createdAt || '').slice(5, 16)}に作った`;
-      const acts = r.state === '要確認' ? `<button type="button" class="small needs-edit" data-resolve="posted" data-id="${r.id}">投稿済みにする</button><button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>`
-        : r.state === '失敗' ? `<button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>` : '';
+      const cancel = `<button type="button" class="small needs-edit" data-resolve="cancel" data-id="${r.id}">取り消す</button>`;
+      const acts = r.state === '要確認' ? `<button type="button" class="small needs-edit" data-resolve="posted" data-id="${r.id}">投稿済みにする</button><button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>${cancel}`
+        : r.state === '失敗' ? `<button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>${cancel}`
+          : r.state === '確認済み' ? cancel : '';
       return `<div class="item"><div><b>${esc(label)}</b>(${esc(when)}、${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'})<br><span class="hint">${esc(r.state)}:${esc(STATE_HINT[r.state] || '')}${r.lastError ? ' / ' + esc(r.lastError) : ''}</span></div><div class="acts">${acts}</div></div>`;
     }).join('') || '<p class="hint">まだ予約はありません。</p>';
   }
-  document.addEventListener('click', e => { const b = e.target.closest('button[data-resolve]'); if (b) call('resolveReservation', b.dataset.id, b.dataset.resolve); });
+  // 取り消すは、まちがえて押さないように2回押したときだけ
+  let cancelArmed = null;
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button[data-resolve]'); if (!b) return;
+    if (b.dataset.resolve === 'cancel' && cancelArmed !== b) {
+      if (cancelArmed) cancelArmed.textContent = '取り消す';
+      cancelArmed = b; b.textContent = 'もう一度押すと取り消す';
+      setTimeout(() => { if (cancelArmed === b) { b.textContent = '取り消す'; cancelArmed = null; } }, 4000);
+      return;
+    }
+    cancelArmed = null;
+    call('resolveReservation', b.dataset.id, b.dataset.resolve);
+  });
 
   // 自動投稿が止まっていないか(公開窓口の配信データを見る)
   async function checkAuto() {

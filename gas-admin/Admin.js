@@ -216,13 +216,18 @@ function confirmCalendar(input, image, baseVersion) {
   return r;
 }
 
-// 「要確認」「失敗」の予約を、お店の人が決める。action: 'posted'(投稿済みにする)| 'retry'(もう一度出す)
+// 予約を、お店の人が決める。action: 'posted'(投稿済みにする)| 'retry'(もう一度出す)| 'cancel'(取り消す)
 function resolveReservation(id, action, baseVersion) {
   return mutate_(baseVersion, () => {
     const r = readTable_('reservations').find(x => x.id === id);
     if (!r) return { error: 'その予約が見つかりません。読み直してください。' };
-    if (!['要確認', '失敗'].includes(r.state)) return { error: `この予約は「${r.state}」なので、変えられません。` };
     const now = nowText_();
+    if (action === 'cancel') {
+      if (!['要確認', '失敗', '確認済み'].includes(r.state)) return { error: `この予約は「${r.state}」なので、取り消せません。` };
+      setCells_('reservations', r.row, { state: '取り消し', phase: '', ticket: '', lastError: 'お店の人が取り消しました', updatedAt: now });
+      return { message: '取り消しました。この予約は、自動では投稿されません。' };
+    }
+    if (!['要確認', '失敗'].includes(r.state)) return { error: `この予約は「${r.state}」なので、変えられません。` };
     if (action === 'posted') {
       setCells_('reservations', r.row, { state: '投稿済み', phase: '', lastError: 'お店の人が「投稿済み」にしました', updatedAt: now });
       return { message: '投稿済みにしました。' };

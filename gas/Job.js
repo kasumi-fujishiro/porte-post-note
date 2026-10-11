@@ -19,6 +19,11 @@ function hourlyJob() {
   if (!lock.tryLock(30000)) { logRun_('自動実行', '見送り', 'ほかの実行が動いています'); return; }
   try {
     const settings = settingsMap_();
+    // 「トークンが使えない」の印がついている間は、毎回トークンを試し、使えれば印を消す
+    if (prop_('TOKEN_BAD', false) === 'yes') {
+      const t = graph_('get', prop_('IG_USER_ID'), { fields: 'username' });
+      if (t.code === 200) { setProp_('TOKEN_BAD', ''); logRun_('トークンの確かめ', '成功', 'トークンが使えるようになったので、知らせを消しました'); }
+    }
     try { publishPendingImages(); } catch (e) { logRun_('画像を公開する', '失敗', e.message); }
     readTable_('reservations').forEach(r => {
       if (Date.now() - t0 > JOB_BUDGET_MS - 60000) return; // 時間切れ。次の回に
