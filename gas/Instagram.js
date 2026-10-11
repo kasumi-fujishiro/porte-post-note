@@ -7,8 +7,9 @@ function graphUrl_(path) {
 
 // トークンは、URLではなく送る中身(payload)に入れる。ログには出さない
 function graph_(method, path, params) {
-  // 試しのとき(ALLOW_TEST_POSTS と TEST_BREAK_TOKEN が yes)は、わざと使えないトークンにする
-  const breakIt = prop_('ALLOW_TEST_POSTS', false) === 'yes' && prop_('TEST_BREAK_TOKEN', false) === 'yes';
+  // 試しのとき(ALLOW_TEST_POSTS が yes で、TEST_BREAK_TOKEN が今日の日付)は、わざと使えないトークンにする。
+  // 日付にしているのは、消し忘れても次の日には効かなくなるようにするため
+  const breakIt = prop_('ALLOW_TEST_POSTS', false) === 'yes' && prop_('TEST_BREAK_TOKEN', false) === nowText_().slice(0, 10);
   const token = breakIt ? 'INVALID_TOKEN_FOR_TEST' : prop_('META_PAGE_TOKEN');
   const opts = { method, muteHttpExceptions: true };
   let url = graphUrl_(path);

@@ -106,7 +106,7 @@ cd gas-admin && clasp create-deployment -i <ID> -d "管理ページ"
 | `SHEET_ID` | シートのID(`setupSheet` が入れる) | |
 | `DRIVE_FOLDER_ID` | 原本のフォルダのID(`setupSheet` が入れる) | |
 | `ALLOW_TEST_POSTS` | `yes` のときだけ、試しの関数が動く。**お店のアカウントに移す前に消す** | |
-| `TEST_BREAK_TOKEN` | 試しのとき、わざとトークンを使えなくする。ふだんは入れない | |
+| `TEST_BREAK_TOKEN` | 試しのとき、わざとトークンを使えなくする。値は**その日の日付**(`2026-10-11` の形)にする。その日だけ効き、次の日には効かなくなる。ふだんは入れない | |
 
 `LAST_OK_AT`、`TOKEN_BAD`、`LAST_DAILY`、`TOKEN_CHECKED_AT`、`LOG_DAY`、`SENT_…`、`TEST_…` は、コードが自動で書きます。手で直さないでください(`SENT_…` を消すと、その知らせがもう一度送られます)。
 
@@ -234,7 +234,7 @@ python3 -m http.server 8000
 | `testLineMessage` | LINEに試しの知らせを送る |
 | `testMakeReservationNow` | すぐに投稿の対象になる試しの予約を作る。そのあと `hourlyJob` |
 | `testStuckPublishing` | 「投稿中」で止まった予約を作る。`hourlyJob` で「要確認」になり、投稿されない |
-| `TEST_BREAK_TOKEN` = `yes` にしてから試しの予約 → `hourlyJob` | トークンが使えないときの知らせ |
+| `TEST_BREAK_TOKEN` = 今日の日付 にしてから試しの予約 → `hourlyJob` | トークンが使えないときの知らせ。終わったら `TEST_BREAK_TOKEN` を消し、「もう一度出す」で投稿し直す |
 | `testStartWeek` / `testStopWeek` | 毎日11時台に試しの予約を作る(1週間の試し)/止める |
 
 **試しのあとの片づけ**

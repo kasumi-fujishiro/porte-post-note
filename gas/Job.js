@@ -82,7 +82,11 @@ function postOne_(r, act, t0, settings) {
     const a = afterFailure(r, !!e.token);
     set({ state: a.state, phase: '', containerId: '', tries: a.tries, tokenBad: a.tokenBad, lastError: e.message });
     logRun_('投稿', '失敗', `${r.month}:${e.message}`);
-    if (e.token) {
+    if (r.month === 'TEST') {
+      // 試しの予約のときは、試しと分かる文にする(お店の投稿は止まっていない)
+      if (e.token) setProp_('TOKEN_BAD', 'yes');
+      if (e.token || a.giveUp) notifyOnce_(`test:${r.id}`, `【投稿ノート・試し】試しの投稿が、うまくいきませんでした(${e.token ? 'トークンが使えない' : `${a.tries}回やり直した`})。お店の投稿のことではありません。管理する人が、シートの「動作記録」で理由を確かめてください。`);
+    } else if (e.token) {
       setProp_('TOKEN_BAD', 'yes');
       notifyOnce_(`token:${nowText_().slice(0, 10)}`, `【投稿ノート】Instagramに投稿するための鍵(トークン)が使えなくなりました。自動の投稿は止まっています。管理する人に、作り直しを頼んでください。今月の分は、アプリから画像を保存して手で投稿してください。\n${appLink_()}`);
     } else if (a.giveUp) {
