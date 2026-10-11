@@ -83,6 +83,12 @@ function postOne_(r, act, t0, settings) {
     set({ state: '投稿済み', phase: '', mediaId, lastError: '', tokenBad: '' });
     setProp_('TOKEN_BAD', '');
     logRun_('投稿', '成功', `${r.month}:投稿のID ${mediaId}`);
+    // 営業カレンダーを投稿したら、LINEで知らせる(試しの投稿では送らない)
+    if (r.month !== 'TEST') {
+      let link = '';
+      try { const p = graph_('get', mediaId, { fields: 'permalink' }); if (p.code === 200 && p.json.permalink) link = '\n' + p.json.permalink; } catch (e) { link = ''; }
+      notifyOnce_(`posted:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、Instagramの${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'}に投稿しました。${link}`);
+    }
   } catch (e) {
     const a = afterFailure(r, !!e.token);
     set({ state: a.state, phase: '', containerId: '', tries: a.tries, tokenBad: a.tokenBad, lastError: e.message });
