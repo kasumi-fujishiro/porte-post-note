@@ -60,7 +60,7 @@ function state_(me) {
     // 月ごとの、いちばん新しい予約
     reservations: latestReservations_(tables.reservations),
     recent: tables.reservations.filter(r => r.id).sort((a, b) => ((a.createdAt || '') < (b.createdAt || '') ? 1 : -1)).slice(0, 10)
-      .map(r => ({ id: r.id, month: r.month, state: r.state, postTo: r.postTo, postDate: r.postDate, mediaId: r.mediaId, lastError: r.lastError, tries: r.tries, updatedAt: r.updatedAt })),
+      .map(r => ({ id: r.id, month: r.month, state: r.state, postTo: r.postTo, postDate: r.postDate, mediaId: r.mediaId, lastError: r.lastError, tries: r.tries, createdAt: r.createdAt, updatedAt: r.updatedAt })),
     calendarState: feed.calendarState, schedule: feed.settings.schedule, regular: feed.settings.regular, firstUse: feed.settings.firstUse, postTo: feed.settings.postTo
   };
 }

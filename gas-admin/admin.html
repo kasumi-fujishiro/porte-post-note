@@ -450,10 +450,13 @@ const { CONFIG } = await import(APP + 'config.js?v=12');
   const STATE_HINT = { '確認済み': '投稿を待っています', '投稿中': '投稿しています', '投稿済み': '投稿しました', '失敗': 'うまくいきませんでした', '要確認': '投稿できたか分かりません', '取り消し': '取り消しました' };
   function paintRecent() {
     $('#recent').innerHTML = (S.recent || []).map(r => {
-      const label = /^\d{4}-\d{2}$/.test(r.month) ? `${+r.month.slice(5)}月の営業カレンダー` : '試しの投稿';
+      const isCal = /^\d{4}-\d{2}$/.test(r.month);
+      // 営業カレンダーは「投稿する日」、試しの投稿は「作った日時」を出す
+      const label = isCal ? `${+r.month.slice(5)}月の営業カレンダー` : '試しの投稿';
+      const when = isCal ? `${r.postDate || ''}に投稿` : `${(r.createdAt || '').slice(5, 16)}に作った`;
       const acts = r.state === '要確認' ? `<button type="button" class="small needs-edit" data-resolve="posted" data-id="${r.id}">投稿済みにする</button><button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>`
         : r.state === '失敗' ? `<button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>` : '';
-      return `<div class="item"><div><b>${esc(label)}</b>(${esc(r.postDate || '')}、${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'})<br><span class="hint">${esc(r.state)}:${esc(STATE_HINT[r.state] || '')}${r.lastError ? ' / ' + esc(r.lastError) : ''}</span></div><div class="acts">${acts}</div></div>`;
+      return `<div class="item"><div><b>${esc(label)}</b>(${esc(when)}、${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'})<br><span class="hint">${esc(r.state)}:${esc(STATE_HINT[r.state] || '')}${r.lastError ? ' / ' + esc(r.lastError) : ''}</span></div><div class="acts">${acts}</div></div>`;
     }).join('') || '<p class="hint">まだ予約はありません。</p>';
   }
   document.addEventListener('click', e => { const b = e.target.closest('button[data-resolve]'); if (b) call('resolveReservation', b.dataset.id, b.dataset.resolve); });
