@@ -83,11 +83,14 @@ function postOne_(r, act, t0, settings) {
     set({ state: '投稿済み', phase: '', mediaId, lastError: '', tokenBad: '' });
     setProp_('TOKEN_BAD', '');
     logRun_('投稿', '成功', `${r.month}:投稿のID ${mediaId}`);
+    // 投稿のリンクを残す(アプリの「ストーリーズでシェア」に使う)
+    let permalink = '';
+    try { const p = graph_('get', mediaId, { fields: 'permalink' }); if (p.code === 200 && p.json.permalink) permalink = p.json.permalink; } catch (e) { permalink = ''; }
+    if (permalink) set({ permalink });
     // 営業カレンダーを投稿したら、LINEで知らせる(試しの投稿では送らない)
     if (r.month !== 'TEST') {
-      let link = '';
-      try { const p = graph_('get', mediaId, { fields: 'permalink' }); if (p.code === 200 && p.json.permalink) link = '\n' + p.json.permalink; } catch (e) { link = ''; }
-      notifyOnce_(`posted:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、Instagramの${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'}に投稿しました。${link}`);
+      const share = r.postTo === 'story' ? '' : '\n\nストーリーズでもシェアしてください:下のリンクを開く → 投稿の下の紙飛行機のボタン →「ストーリーズに追加」。アプリにも、シェアのボタンが出ています。';
+      notifyOnce_(`posted:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、Instagramの${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'}に投稿しました。${share}${permalink ? '\n' + permalink : ''}`);
     }
   } catch (e) {
     const a = afterFailure(r, !!e.token);

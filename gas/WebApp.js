@@ -78,6 +78,8 @@ function feedData_() {
   const { feed, problems } = buildFeed(tables, generatedAt, null);
   // 自動投稿の状態:最後に正しく動いた日時と、知らせ(要確認、3回失敗、トークンが使えない)
   feed.auto = { lastOkAt: lastOk, alert: deriveAlert(tables.reservations, tokenBad) };
+  // ストーリーズでのシェアを呼びかける投稿(48時間以内)
+  feed.share = shareFor(tables.reservations, nowText_(), prop_('ALLOW_TEST_POSTS', false) === 'yes');
   const text = JSON.stringify(feed);
   cache.put(key, text, 21600);
   cache.put('problems:' + v, JSON.stringify(problems), 21600);

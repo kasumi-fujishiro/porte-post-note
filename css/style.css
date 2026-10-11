@@ -98,6 +98,9 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line
 th { color: var(--muted); font-weight: 700; }
 
 /* お知らせ */
+.notice.share { border-color: var(--ink); }
+.primary-link { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; }
+.primary-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; font-weight: 700; margin-bottom: 14px; }
 .notice { display: grid; gap: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
 .notice p { font-weight: 700; }

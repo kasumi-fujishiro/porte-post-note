@@ -185,6 +185,15 @@ export const gasCases = [
     const s = G('isStale');
     eq(s('2026-10-20 12:00:00', '2026-10-22 11:00:00'), false); eq(s('2026-10-20 12:00:00', '2026-10-22 12:00:00'), true); eq(s('', '2026-10-22 12:00:00'), false);
   }],
+  ['シェア:投稿してから48時間以内の、フィードの営業カレンダーだけ。試しは含めるときだけ', eq => {
+    const s = G('shareFor'), r = { id: 'a', state: '投稿済み', month: '2026-11', postTo: 'feed', permalink: 'https://instagram.com/p/x', updatedAt: '2026-10-25 12:05:00' };
+    eq(s([r], '2026-10-26 12:00:00', false).permalink, 'https://instagram.com/p/x');
+    eq(s([r], '2026-10-27 12:06:00', false), null);
+    eq(s([{ ...r, postTo: 'story' }], '2026-10-25 13:00:00', false), null);
+    eq(s([{ ...r, permalink: '' }], '2026-10-25 13:00:00', false), null);
+    eq(s([{ ...r, month: 'TEST' }], '2026-10-25 13:00:00', false), null);
+    eq(s([{ ...r, month: 'TEST' }], '2026-10-25 13:00:00', true).id, 'a');
+  }],
   ['記録:1分30件・1日300件をこえた分は受けつけない', eq => {
     const a = G('allowedCount');
     eq(a(5, 0, 0), 5); eq(a(5, 28, 0), 2); eq(a(5, 0, 299), 1); eq(a(5, 30, 0), 0);

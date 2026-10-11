@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=12">
-<script type="module" src="js/app.js?v=12"></script>
+<link rel="stylesheet" href="css/style.css?v=13">
+<script type="module" src="js/app.js?v=13"></script>
 </head>
 <body>
 <div class="app">
@@ -30,6 +30,12 @@
   </div>
 
   <p class="warn" id="autoAlert" role="status" hidden></p>
+
+  <div class="notice share" id="share" role="status" hidden>
+    <p id="shareText"></p>
+    <p class="hint">開いたら、投稿の下の紙飛行機のボタン →「ストーリーズに追加」→「送信先」の「ストーリーズ」</p>
+    <div class="row"><a class="primary-link" id="shareGo" href="#" target="_blank" rel="noopener">Instagramで投稿を開く</a><button type="button" class="small" id="shareDone">シェアした</button></div>
+  </div>
 
   <div class="notice" id="notice" role="status" hidden>
     <p id="noticeText"></p>

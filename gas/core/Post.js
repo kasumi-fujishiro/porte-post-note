@@ -83,4 +83,15 @@ function isStale(lastOkAt, now) {
   return minutesBetween(lastOkAt, now) >= 48 * 60;
 }
 
-if (typeof module !== 'undefined') module.exports = { MAX_TRIES, decide, afterFailure, deriveAlert, lineNoticeKind, daysUntil, isStale, minutesBetween };
+// ストーリーズでのシェアを呼びかける投稿(投稿してから48時間以内の、いちばん新しいもの)。なければ null
+// includeTest:試しの投稿も含める(ALLOW_TEST_POSTS が yes のとき。確かめのため)
+function shareFor(reservations, now, includeTest) {
+  const list = (reservations || []).filter(r => r.state === '投稿済み' && r.permalink && r.postTo !== 'story'
+    && (/^\d{4}-\d{2}$/.test(r.month || '') || (includeTest && r.month === 'TEST'))
+    && minutesBetween(r.updatedAt, now) <= 48 * 60);
+  if (!list.length) return null;
+  const r = list.sort((a, b) => ((a.updatedAt || '') < (b.updatedAt || '') ? 1 : -1))[0];
+  return { id: r.id, month: r.month, permalink: r.permalink };
+}
+
+if (typeof module !== 'undefined') module.exports = { shareFor, MAX_TRIES, decide, afterFailure, deriveAlert, lineNoticeKind, daysUntil, isStale, minutesBetween };
