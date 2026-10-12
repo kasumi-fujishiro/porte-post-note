@@ -71,16 +71,16 @@ function json_(obj) {
 const FEED_FORMAT = 2;
 
 function feedData_() {
-  // 版番号と形の番号に加えて、最後に正しく動いた日時と、トークンの状態が変わったら作り直す
-  const lastOk = prop_('LAST_OK_AT', false), tokenBad = prop_('TOKEN_BAD', false) === 'yes';
-  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = `feed${FEED_FORMAT}:${v}:${lastOk}:${tokenBad}`;
+  // 版番号と形の番号に加えて、最後に正しく動いた日時と、トークン・アカウントの状態が変わったら作り直す
+  const lastOk = prop_('LAST_OK_AT', false), tokenBad = prop_('TOKEN_BAD', false) === 'yes', blocked = prop_('IG_BLOCKED', false) === 'yes';
+  const cache = CacheService.getScriptCache(), v = String(currentVersion_()), key = `feed${FEED_FORMAT}:${v}:${lastOk}:${tokenBad}:${blocked}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const tables = { settings: readTable_('settings'), phrases: readTable_('phrases'), products: readTable_('products'), calendars: readTable_('calendars'), reservations: readTable_('reservations') };
   const generatedAt = Utilities.formatDate(new Date(), 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX");
   const { feed, problems } = buildFeed(tables, generatedAt, null);
   // 自動投稿の状態:最後に正しく動いた日時と、知らせ(要確認、3回失敗、トークンが使えない)
-  feed.auto = { lastOkAt: lastOk, alert: deriveAlert(tables.reservations, tokenBad) };
+  feed.auto = { lastOkAt: lastOk, alert: deriveAlert(tables.reservations, tokenBad, blocked) };
   // ストーリーズでのシェアを呼びかける投稿(48時間以内)
   feed.share = shareFor(tables.reservations, nowText_(), prop_('ALLOW_TEST_POSTS', false) === 'yes');
   const text = JSON.stringify(feed);

@@ -108,7 +108,7 @@ cd gas-admin && clasp create-deployment -i <ID> -d "管理ページ"
 | `ALLOW_TEST_POSTS` | `yes` のときだけ、試しの関数が動く。**お店のアカウントに移す前に消す** | |
 | `TEST_BREAK_TOKEN` | 試しのとき、わざとトークンを使えなくする。値は**その日の日付**(`2026-10-11` の形)にする。その日だけ効き、次の日には効かなくなる。ふだんは入れない | |
 
-`LAST_OK_AT`、`TOKEN_BAD`、`LAST_DAILY`、`TOKEN_CHECKED_AT`、`LOG_DAY`、`SENT_…`、`TEST_…` は、コードが自動で書きます。手で直さないでください(`SENT_…` を消すと、その知らせがもう一度送られます)。
+`LAST_OK_AT`、`TOKEN_BAD`、`IG_BLOCKED`(Instagramのアカウントが確認の画面で止められている)、`LAST_DAILY`、`TOKEN_CHECKED_AT`、`LOG_DAY`、`SENT_…`、`TEST_…` は、コードが自動で書きます。手で直さないでください(`SENT_…` を消すと、その知らせがもう一度送られます)。
 
 ### 投稿ノート 管理(管理ページ)
 

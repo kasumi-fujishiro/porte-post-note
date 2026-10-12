@@ -47,8 +47,20 @@ function afterFailure(res, token) {
   return { state: '失敗', phase: '', tries: String(tries), tokenBad: token ? 'TRUE' : '', giveUp: token || tries >= MAX_TRIES };
 }
 
+// Metaのエラーの種類。'token':トークンの作り直しが必要 / 'account':Instagramのアカウントが止められている / '':そのほか
+// アカウントが止められている(ロボットでないことの確認など)ときは、お店のアカウントの番号について「存在しないか、権限がない」と返ってくる
+function graphErrorKind(err, igUserId) {
+  const e = err || {}, msg = String(e.message || '');
+  if (e.code === 190 || e.code === 102 || (e.type === 'OAuthException' && /token/i.test(msg))) return 'token';
+  if (e.code === 100 && igUserId && msg.includes(`'${igUserId}'`) && /does not exist|missing permissions/i.test(msg)) return 'account';
+  return '';
+}
+
+const ACCOUNT_ALERT = 'Instagramのアカウントに、確認の画面が出て止まっています。管理する人に、Instagramのアプリを開いて確認をすませてもらってください。';
+
 // アプリと管理ページに出す知らせ(なければ null)。新しいものを優先する
-function deriveAlert(reservations, tokenBad) {
+function deriveAlert(reservations, tokenBad, blocked) {
+  if (blocked) return { kind: 'account', message: ACCOUNT_ALERT };
   if (tokenBad) return { kind: 'token', message: 'Instagramに投稿するための鍵(トークン)が使えなくなりました。管理する人に、作り直しを頼んでください。' };
   const live = (reservations || []).filter(r => r.state === '要確認' || (r.state === '失敗' && ((+r.tries || 0) >= MAX_TRIES || r.tokenBad === 'TRUE')));
   if (!live.length) return null;
@@ -94,4 +106,4 @@ function shareFor(reservations, now, includeTest) {
   return { id: r.id, month: r.month, permalink: r.permalink };
 }
 
-if (typeof module !== 'undefined') module.exports = { shareFor, MAX_TRIES, decide, afterFailure, deriveAlert, lineNoticeKind, daysUntil, isStale, minutesBetween };
+if (typeof module !== 'undefined') module.exports = { graphErrorKind, shareFor, MAX_TRIES, decide, afterFailure, deriveAlert, lineNoticeKind, daysUntil, isStale, minutesBetween };

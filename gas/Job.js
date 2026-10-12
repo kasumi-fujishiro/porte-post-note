@@ -10,9 +10,22 @@ function settingsMap_() {
 }
 
 // 失敗をあらわすエラー。token: トークンが使えない / definite: はっきりした失敗(やり直してよい)
-function postError_(message, token, definite) {
-  const e = new Error(message); e.token = !!token; e.definite = definite !== false; return e;
+// kind:'token' / 'account' のときは、やり直しても直らないので、自動のやり直しをしない
+function postError_(message, kind, definite) {
+  const e = new Error(message); e.token = kind === 'token'; e.account = kind === 'account'; e.definite = definite !== false; return e;
 }
+
+// Instagramが使えるかを試し、知らせの印(TOKEN_BAD / IG_BLOCKED)を正しくする。返り値:{ ok, kind, text }
+function checkInstagram_() {
+  const r = graph_('get', prop_('IG_USER_ID'), { fields: 'username' });
+  if (r.code === 200) { setProp_('TOKEN_BAD', ''); setProp_('IG_BLOCKED', ''); return { ok: true, kind: '', text: '' }; }
+  const e = graphError_(r);
+  if (e.kind === 'token') { setProp_('TOKEN_BAD', 'yes'); setProp_('IG_BLOCKED', ''); }
+  if (e.kind === 'account') { setProp_('IG_BLOCKED', 'yes'); setProp_('TOKEN_BAD', ''); }
+  return { ok: false, kind: e.kind, text: e.text };
+}
+
+const ACCOUNT_LINE = '【投稿ノート】Instagramのアカウントが、確認の画面で止められています(ロボットでないことの確認や、電話番号の確認など)。自動の投稿は止まっています。管理する人は、スマホのInstagramのアプリを開いて、確認をすませてください。すませれば、1時間以内にこの知らせは消え、止まっていた投稿も自動で出します。';
 
 function hourlyJob() {
   const t0 = Date.now(), lock = LockService.getScriptLock();
@@ -20,9 +33,15 @@ function hourlyJob() {
   try {
     const settings = settingsMap_();
     // 「トークンが使えない」の印がついている間は、毎回トークンを試し、使えれば印を消す
-    if (prop_('TOKEN_BAD', false) === 'yes') {
-      const t = graph_('get', prop_('IG_USER_ID'), { fields: 'username' });
-      if (t.code === 200) { setProp_('TOKEN_BAD', ''); logRun_('トークンの確かめ', '成功', 'トークンが使えるようになったので、知らせを消しました'); }
+    if (prop_('TOKEN_BAD', false) === 'yes' || prop_('IG_BLOCKED', false) === 'yes') {
+      const t = checkInstagram_();
+      if (t.ok) {
+        logRun_('Instagramの確かめ', '成功', 'Instagramが使えるようになったので、知らせを消しました');
+        // アカウントが止められていて出せなかった予約は、もう一度出す(トークンのときは、作り直したあと管理ページから出す)
+        readTable_('reservations').filter(r => r.state === '失敗' && r.tokenBad === 'TRUE' && String(r.lastError).startsWith(STOP_PREFIX.account))
+          .forEach(r => setCells_('reservations', r.row, { state: '確認済み', tries: '0', tokenBad: '', lastError: '', updatedAt: nowText_() }));
+      }
+      else logRun_('Instagramの確かめ', '失敗', t.text);
     }
     try { publishPendingImages(); } catch (e) { logRun_('画像を公開する', '失敗', e.message); }
     readTable_('reservations').forEach(r => {
@@ -81,7 +100,7 @@ function postOne_(r, act, t0, settings) {
       throw e;
     }
     set({ state: '投稿済み', phase: '', mediaId, lastError: '', tokenBad: '' });
-    setProp_('TOKEN_BAD', '');
+    setProp_('TOKEN_BAD', ''); setProp_('IG_BLOCKED', '');
     logRun_('投稿', '成功', `${r.month}:投稿のID ${mediaId}`);
     // 投稿のリンクを残す(アプリの「ストーリーズでシェア」に使う)
     let permalink = '';
@@ -93,15 +112,18 @@ function postOne_(r, act, t0, settings) {
       notifyOnce_(`posted:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、Instagramの${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'}に投稿しました。${share}${permalink ? '\n' + permalink : ''}`);
     }
   } catch (e) {
-    const a = afterFailure(r, !!e.token);
+    const stop = e.token || e.account;
+    const a = afterFailure(r, stop);
+    if (e.token) setProp_('TOKEN_BAD', 'yes');
+    if (e.account) { setProp_('IG_BLOCKED', 'yes'); notifyOnce_(`account:${nowText_().slice(0, 10)}`, ACCOUNT_LINE); }
     set({ state: a.state, phase: '', containerId: '', tries: a.tries, tokenBad: a.tokenBad, lastError: e.message });
     logRun_('投稿', '失敗', `${r.month}:${e.message}`);
     if (r.month === 'TEST') {
       // 試しの予約のときは、試しと分かる文にする(お店の投稿は止まっていない)
-      if (e.token) setProp_('TOKEN_BAD', 'yes');
-      if (e.token || a.giveUp) notifyOnce_(`test:${r.id}`, `【投稿ノート・試し】試しの投稿が、うまくいきませんでした(${e.token ? 'トークンが使えない' : `${a.tries}回やり直した`})。お店の投稿のことではありません。管理する人が、シートの「動作記録」で理由を確かめてください。`);
+      if ((e.token || a.giveUp) && !e.account) notifyOnce_(`test:${r.id}`, `【投稿ノート・試し】試しの投稿が、うまくいきませんでした(${e.token ? 'トークンが使えない' : `${a.tries}回やり直した`})。お店の投稿のことではありません。管理する人が、シートの「動作記録」で理由を確かめてください。`);
+    } else if (e.account) {
+      // 知らせは上で送った
     } else if (e.token) {
-      setProp_('TOKEN_BAD', 'yes');
       notifyOnce_(`token:${nowText_().slice(0, 10)}`, `【投稿ノート】Instagramに投稿するための鍵(トークン)が使えなくなりました。自動の投稿は止まっています。管理する人に、作り直しを頼んでください。今月の分は、アプリから画像を保存して手で投稿してください。\n${appLink_()}`);
     } else if (a.giveUp) {
       notifyOnce_(`failed:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、自動で投稿できませんでした(${a.tries}回やり直しました)。アプリの「登録・確認(お店の人用)」から画像を保存して、手で投稿してください。\n${appLink_()}`);
@@ -162,10 +184,10 @@ function dailyChecks_(settings) {
   const last = prop_('TOKEN_CHECKED_AT', false);
   if (!last || daysUntil(last, today) >= 7) {
     setProp_('TOKEN_CHECKED_AT', today);
-    const r = graph_('get', prop_('IG_USER_ID'), { fields: 'username' });
-    if (r.code === 200) setProp_('TOKEN_BAD', '');
-    else if (graphError_(r).token) {
-      setProp_('TOKEN_BAD', 'yes');
+    const r = checkInstagram_();
+    if (!r.ok) logRun_('Instagramの確かめ', '失敗', r.text);
+    if (r.kind === 'account') notifyOnce_(`account:${today}`, ACCOUNT_LINE);
+    if (r.kind === 'token') {
       notifyOnce_(`token:${today}`, `【投稿ノート】Instagramに投稿するための鍵(トークン)が使えなくなっています。次の投稿の日までに、管理する人に作り直しを頼んでください。\n${appLink_()}`);
     }
   }

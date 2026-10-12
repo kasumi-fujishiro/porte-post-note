@@ -187,6 +187,14 @@ export const gasCases = [
     eq(a([{ state: '失敗', tries: '3', month: '2026-11' }], false).kind, 'failed');
     eq(a([{ state: '要確認', month: '2026-11' }], false).message.includes('11月'), true);
     eq(a([], true).kind, 'token');
+    eq(a([], true, true).kind, 'account');
+  }],
+  ['Metaのエラー:トークン・アカウントが止められている・そのほか を見分ける', eq => {
+    const k = G('graphErrorKind');
+    eq(k({ code: 190, message: 'Error validating access token' }, '178'), 'token');
+    eq(k({ code: 100, message: "Unsupported post request. Object with ID '178' does not exist, cannot be loaded due to missing permissions" }, '178'), 'account');
+    eq(k({ code: 100, message: "Unsupported get request. Object with ID '999' does not exist" }, '178'), '');
+    eq(k({ code: 9004, message: 'Only photo or video can be accepted as media type.' }, '178'), '');
   }],
   ['LINE:20日と23日に、まだ確認していなければ送る', eq => {
     const k = G('lineNoticeKind'), sch = { notice1: 20, notice2: 23 };

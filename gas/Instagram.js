@@ -26,12 +26,14 @@ function graph_(method, path, params) {
   return { code: res.getResponseCode(), json };
 }
 
-// はっきりしたエラーを、分かる言葉にする。token: true なら、トークンのやり直しが必要
+// はっきりしたエラーを、分かる言葉にする。kind:'token'(トークンの作り直し)/ 'account'(アカウントが止められている)/ ''
 function graphError_(r) {
   const e = (r.json && r.json.error) || {};
-  const token = e.code === 190 || e.code === 102 || (e.type === 'OAuthException' && /token/i.test(e.message || ''));
-  return { token, text: `(${r.code} / code ${e.code || '-'}) ${e.message || '応答がありません'}` };
+  const kind = graphErrorKind(e, prop_('IG_USER_ID', false));
+  return { kind, token: kind === 'token', text: `(${r.code} / code ${e.code || '-'}) ${e.message || '応答がありません'}` };
 }
+
+const STOP_PREFIX = { token: 'トークンが使えません。', account: 'Instagramのアカウントが止められています(アプリで確認の画面が出ていないか見てください)。' };
 
 // 下書きを作る。kind: 'feed' または 'story'
 function igCreateContainer_(imageUrl, kind, caption) {
@@ -43,7 +45,7 @@ function igCreateContainer_(imageUrl, kind, caption) {
   catch (err) { throw postError_('下書きを作るときに、通信がうまくいきませんでした。' + err.message); }
   if (r.code !== 200 || !r.json.id) {
     const e = graphError_(r);
-    throw postError_((e.token ? 'トークンが使えません。' : '下書きを作れませんでした。') + e.text, e.token);
+    throw postError_((STOP_PREFIX[e.kind] || '下書きを作れませんでした。') + e.text, e.kind);
   }
   return r.json.id;
 }
@@ -70,7 +72,7 @@ function igPublish_(containerId) {
   if (r.code >= 500) throw postError_(`公開を送ったときに、Metaの側で不具合がありました(${r.code})。`, false, false);
   if (r.code !== 200 || !r.json.id) {
     const e = graphError_(r);
-    throw postError_((e.token ? 'トークンが使えません。' : '公開できませんでした。') + e.text, e.token);
+    throw postError_((STOP_PREFIX[e.kind] || '公開できませんでした。') + e.text, e.kind);
   }
   return r.json.id;
 }
