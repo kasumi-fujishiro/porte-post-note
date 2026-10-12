@@ -62,7 +62,8 @@ const ACCOUNT_ALERT = 'Instagramのアカウントに、確認の画面が出て
 function deriveAlert(reservations, tokenBad, blocked) {
   if (blocked) return { kind: 'account', message: ACCOUNT_ALERT };
   if (tokenBad) return { kind: 'token', message: 'Instagramに投稿するための鍵(トークン)が使えなくなりました。管理する人に、作り直しを頼んでください。' };
-  const live = (reservations || []).filter(r => r.state === '要確認' || (r.state === '失敗' && ((+r.tries || 0) >= MAX_TRIES || r.tokenBad === 'TRUE')));
+  // 試しの予約(TEST)は、お店の知らせに出さない(試しの失敗はLINEで管理する人に届く)
+  const live = (reservations || []).filter(r => r.month !== 'TEST').filter(r => r.state === '要確認' || (r.state === '失敗' && ((+r.tries || 0) >= MAX_TRIES || r.tokenBad === 'TRUE')));
   if (!live.length) return null;
   const r = live.sort((a, b) => ((a.updatedAt || '') < (b.updatedAt || '') ? 1 : -1))[0];
   const m = /^(\d{4})-(\d{2})$/.exec(r.month || '');

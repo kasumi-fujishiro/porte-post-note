@@ -188,6 +188,7 @@ export const gasCases = [
     eq(a([{ state: '要確認', month: '2026-11' }], false).message.includes('11月'), true);
     eq(a([], true).kind, 'token');
     eq(a([], true, true).kind, 'account');
+    eq(a([{ state: '失敗', tries: '3', month: 'TEST' }], false), null);
   }],
   ['Metaのエラー:トークン・アカウントが止められている・そのほか を見分ける', eq => {
     const k = G('graphErrorKind');
