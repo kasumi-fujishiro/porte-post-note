@@ -20,10 +20,10 @@ function githubApi_(method, path, body) {
   return { code, json };
 }
 
-// path(例:calendar/2026-11.jpg)に、blob を置く。同じ名前があれば上書きする。
+// path(例:calendar/2026-11.jpg、新作は posts/2026-10-14-予約ID.jpg)に、blob を置く。同じ名前があれば上書きする。
 // 返り値:{ path, size, sha }
 function githubPutImage_(path, blob, message) {
-  if (!/^calendar\/[a-z0-9-]+\.jpg$/.test(path)) throw new Error('画像を置けるのは calendar/ の中の .jpg だけです:' + path);
+  if (!/^(calendar|posts)\/[a-z0-9-]+\.jpg$/.test(path)) throw new Error('画像を置けるのは calendar/ か posts/ の中の .jpg だけです:' + path);
   const branch = prop_('GITHUB_BRANCH', false) || 'main';
   const old = githubApi_('get', `contents/${path}?ref=${branch}`);
   const body = { message, content: Utilities.base64Encode(blob.getBytes()), branch };

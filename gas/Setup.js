@@ -80,6 +80,7 @@ function ensureColumns_() {
     const head = sh.getRange(1, 1, 1, have).getDisplayValues()[0];
     if (head.some((h, i) => h !== cols[i][1])) { logRun_('列を足す', '見送り', `シート「${SHEETS[key].name}」の見出しが決まりとちがうので、setupSheet を実行してください`); return; }
     const add = cols.slice(have);
+    if (sh.getMaxColumns() < cols.length) sh.insertColumnsAfter(sh.getMaxColumns(), cols.length - sh.getMaxColumns());
     sh.getRange(1, have + 1, sh.getMaxRows(), add.length).setNumberFormat('@');
     sh.getRange(1, have + 1, 1, add.length).setValues([add.map(c => c[1])]).setFontWeight('bold').setBackground('#EDF1E8');
     logRun_('列を足す', '成功', `シート「${SHEETS[key].name}」に、${add.map(c => c[1]).join('・')}の列を足しました`);
