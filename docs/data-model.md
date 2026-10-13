@@ -44,12 +44,12 @@ erDiagram
     }
     RESERVATIONS {
         string id PK
-        string month FK "CALENDARS.month(試しは TEST)"
+        string month FK "CALENDARS.month(試しは TEST、新作は空)"
         string postTo "feed / story"
-        string postDate "yyyy-MM-dd(前の月の postDay)"
+        string postDate "yyyy-MM-dd(カレンダーは前の月の postDay。新作は登録した日か、えらんだ日)"
         string state "確認済み / 投稿中 / 投稿済み / 失敗 / 要確認 / 取り消し"
         string phase "'' / container / publishing"
-        string imagePath "calendar/yyyy-MM-予約ID.jpg"
+        string imagePath "calendar/yyyy-MM-予約ID.jpg(新作は posts/yyyy-MM-dd-予約ID.jpg)"
         int imageSize "バイト"
         string imageHash "SHA-256"
         string driveFileId FK "DRIVE_ORIGINAL.fileId"
@@ -62,6 +62,12 @@ erDiagram
         string createdAt
         string updatedAt
         string publishedAt "GitHubに公開した日時"
+        string permalink "Instagramの投稿のリンク"
+        string kind "new=新作 / 空=営業カレンダー・試し"
+        string title "新作の商品名(LINEや画面に出す)"
+        string caption "新作の投稿の文(商品名と説明。価格なし)"
+        int postHour "新作を投稿する時(9〜20)"
+        string productId FK "PRODUCTS.id(新作)"
     }
     LOGS {
         string receivedAt "受けた日時(サーバーが書く)"
@@ -92,6 +98,7 @@ erDiagram
     RESERVATIONS ||--o| GITHUB_IMAGE : "公開用の写しを置く(imagePath)"
     RESERVATIONS ||--o| INSTAGRAM_MEDIA : "投稿する(mediaId)"
     SETTINGS ||--o{ RESERVATIONS : "作るときに postTo と postDay を写す"
+    PRODUCTS ||--o{ RESERVATIONS : "写真つきで登録すると、新作の予約を作る(productId)"
 ```
 
 ### 表の名前の対応
@@ -242,7 +249,8 @@ GET {feedUrl}?api=feed
   "products": [{ "id": "2f15956df1", "name": "…", "desc": "…", "color": "pink", "ex": true }],
   "calendars": [{ "month": "2026-11", "days": { "2": "c", "23": "s" }, "note": "23日は営業します" }],
   "calendarState": { "2026-11": "posted", "2026-12": "unconfirmed" },
-  "auto": { "lastOkAt": "2026-10-20 12:03:15", "alert": null }
+  "auto": { "lastOkAt": "2026-10-20 12:03:15", "alert": null },
+  "share": { "id": "予約ID", "month": "", "label": "新作「季節のタルト」", "permalink": "https://www.instagram.com/p/…" }
 }
 ```
 
@@ -253,7 +261,8 @@ GET {feedUrl}?api=feed
 | `calendars` | **確認済みの月だけ**。`days` の c はお休み、s は時間変更、ない日は営業 |
 | `calendarState` | 月ごとの状態:`unconfirmed`(確認前)/ `confirmed`(確認済み)/ `posted`(投稿済み)。確認前の中身は配らない |
 | `auto.lastOkAt` | 毎日の自動実行が最後に正しく動いた日時。2日以上前なら止まっている |
-| `auto.alert` | 知らせ(なければ null)。`kind`:`check`(要確認)/ `failed`(失敗)/ `token`(トークンが使えない)と `message` |
+| `auto.alert` | 知らせ(なければ null)。`kind`:`check`(要確認)/ `failed`(失敗)/ `token`(トークンが使えない)/ `account`(Instagramのアカウントが止められている)と `message` |
+| `share` | 2日以内にフィードに投稿した営業カレンダーか新作(なければ null)。スタッフの画面のベルに「ストーリーズでもシェアしましょう」と出す |
 
 配らないもの:作業時間の記録、動作記録、予約の詳しい中身、確認した人、登録できる人の名簿。
 
@@ -277,13 +286,13 @@ Content-Type: text/plain
 - 1回に20件まで。ほかの項目は捨てる
 - 返り値:`{"ok":true,"accepted":1,"rejected":0}`。混み合っているときは `{"ok":false,"retry":true,…}`(送り直してよい)
 
-### カレンダーの画像(POST、管理ページだけが使う)
+### 投稿する画像(POST、管理ページだけが使う)
 
 ```json
 {"type":"calendarImage","resId":"予約ID","ticket":"合言葉","image":"JPEGのbase64"}
 ```
 
-合言葉は、管理ページで「この内容でOK」を押したときに予約の行に書かれ、1回使うと消えます。大きさとSHA-256が予約の記録と合うときだけ受けつけます。ほかのアプリから使う窓口ではありません。
+新作の画像は `"type":"postImage"` で送ります(中身は同じ)。合言葉は、管理ページで「この内容でOK」(カレンダー)か、写真つきで商品を「登録する」(新作)を押したときに予約の行に書かれ、1回使うと消えます。大きさとSHA-256が予約の記録と合うときだけ受けつけます。ほかのアプリから使う窓口ではありません。
 
 ---
 

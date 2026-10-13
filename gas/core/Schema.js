@@ -19,7 +19,9 @@ const SHEETS = {
     name: '予約', idCol: 'id',
     cols: [['id', '予約ID'], ['month', '月'], ['postTo', '投稿先'], ['postDate', '投稿日'], ['state', '状態'], ['imagePath', '画像の場所'],
       ['imageSize', '画像の大きさ'], ['imageHash', 'ハッシュ値'], ['driveFileId', '原本のファイルID'], ['containerId', '下書きID'],
-      ['mediaId', '投稿ID'], ['tries', 'やり直した回数'], ['lastError', '最後のエラー'], ['createdAt', '作成日時'], ['updatedAt', '更新日時'], ['publishedAt', '画像を公開した日時'], ['ticket', '受け渡しの合言葉'], ['phase', '進み具合'], ['tokenBad', 'トークンが使えない'], ['permalink', '投稿のリンク']]
+      ['mediaId', '投稿ID'], ['tries', 'やり直した回数'], ['lastError', '最後のエラー'], ['createdAt', '作成日時'], ['updatedAt', '更新日時'], ['publishedAt', '画像を公開した日時'], ['ticket', '受け渡しの合言葉'], ['phase', '進み具合'], ['tokenBad', 'トークンが使えない'], ['permalink', '投稿のリンク'],
+      // 新作の自動投稿(10月14日に足した列)。kind:'new'=新作 / 空=営業カレンダー・試し
+      ['kind', '種類'], ['title', '名前'], ['caption', '投稿の文'], ['postHour', '投稿する時'], ['productId', '商品ID']]
   },
   logs: { name: '作業時間', cols: [['receivedAt', '受けた日時'], ['at', '日時'], ['kind', '種類'], ['fmt', '大きさ'], ['sec', '秒'], ['layout', '画面の形']] },
   runs: { name: '動作記録', cols: [['at', '日時'], ['job', '処理'], ['result', '結果'], ['detail', '内容']] }

@@ -110,6 +110,8 @@ cd gas-admin && clasp create-deployment -i <ID> -d "管理ページ"
 
 `LAST_OK_AT`、`TOKEN_BAD`、`IG_BLOCKED`(Instagramのアカウントが確認の画面で止められている)、`LAST_DAILY`、`TOKEN_CHECKED_AT`、`LOG_DAY`、`SENT_…`、`TEST_…` は、コードが自動で書きます。手で直さないでください(`SENT_…` を消すと、その知らせがもう一度送られます)。
 
+あとから足したシートの列(予約の「種類」「名前」「投稿の文」「投稿する時」「商品ID」など)は、1時間ごとの自動実行が、表の右に自動で足します(動作記録に「列を足す」と出ます)。見出しが決まりとちがうときは足さないので、`setupSheet` を実行してください。
+
 ### 投稿ノート 管理(管理ページ)
 
 | 名前 | 中身 |
@@ -232,7 +234,7 @@ python3 -m http.server 8000
 |---|---|
 | `check0_settings` 〜 `check5_story` | 設定欄、ページ、GitHub、公開、フィードとストーリーズへの投稿の確かめ |
 | `testLineMessage` | LINEに試しの知らせを送る |
-| `testMakeReservationNow` | すぐに投稿の対象になる試しの予約を作る。そのあと `hourlyJob` |
+| `testMakeReservationNow` | すぐに投稿の対象になる試しの予約を作る(10月14日から、新作の自動投稿と同じ形。画像は `posts/test-…`)。そのあと `hourlyJob` |
 | `testStuckPublishing` | 「投稿中」で止まった予約を作る。`hourlyJob` で「要確認」になり、投稿されない |
 | `TEST_BREAK_TOKEN` = 今日の日付 にしてから試しの予約 → `hourlyJob` | トークンが使えないときの知らせ。終わったら `TEST_BREAK_TOKEN` を消し、「もう一度出す」で投稿し直す |
 | `testStartWeek` / `testStopWeek` | 毎日11時台に試しの予約を作る(1週間の試し)/止める |

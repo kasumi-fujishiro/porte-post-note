@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const ctx = vm.createContext({ console });
-for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js', 'Post.js']) {
+for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js', 'NewPost.js', 'Post.js']) {
   vm.runInContext(readFileSync(new URL(`../gas/core/${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
 const G = name => vm.runInContext(name, ctx);
@@ -189,6 +189,51 @@ export const gasCases = [
     eq(a([], true).kind, 'token');
     eq(a([], true, true).kind, 'account');
     eq(a([{ state: '失敗', tries: '3', month: 'TEST' }], false), null);
+  }],
+  // ---------- 新作の自動投稿 ----------
+  ['新作:登録した時から、1時間以内の投稿の時を決める(9〜20時台の外は、次の9時台)', eq => {
+    const s = G('newPostSlot');
+    eq(JSON.stringify(s('2026-10-14 15:40:00')), JSON.stringify({ postDate: '2026-10-14', postHour: 15 }));
+    eq(JSON.stringify(s('2026-10-14 07:10:00')), JSON.stringify({ postDate: '2026-10-14', postHour: 9 }));
+    eq(JSON.stringify(s('2026-10-14 21:05:00')), JSON.stringify({ postDate: '2026-10-15', postHour: 9 }));
+    eq(JSON.stringify(s('2026-10-31 23:59:00')), JSON.stringify({ postDate: '2026-11-01', postHour: 9 }));
+    eq(JSON.stringify(s('2026-10-14 20:50:00')), JSON.stringify({ postDate: '2026-10-14', postHour: 20 }));
+  }],
+  ['新作:「時間を決める」は、9〜20時、過ぎた時と60日より先は断る', eq => {
+    const c = G('cleanSlot'), now = '2026-10-14 15:40:00';
+    eq(c({ date: '2026-10-15', hour: 12 }, now).value.postHour, 12);
+    eq(c({ date: '2026-10-14', hour: 15 }, now).error, '');
+    eq(!!c({ date: '2026-10-14', hour: 14 }, now).error, true);
+    eq(!!c({ date: '2026-10-15', hour: 21 }, now).error, true);
+    eq(!!c({ date: '2026-10-15', hour: 8 }, now).error, true);
+    eq(!!c({ date: '2027-01-01', hour: 12 }, now).error, true);
+    eq(!!c({ date: '', hour: 12 }, now).error, true);
+  }],
+  ['新作:投稿の文は商品名と説明だけ。例の商品と、価格のような文字は断る', eq => {
+    eq(G('captionForProduct')({ name: '季節のタルト', desc: 'りんごをのせました' }), '季節のタルト\nりんごをのせました');
+    eq(G('captionForProduct')({ name: '季節のタルト', desc: '' }), '季節のタルト');
+    const k = G('checkNewPost');
+    eq(k({ name: 'タルト', desc: '', ex: 'FALSE' }).error, '');
+    eq(!!k({ name: '例:タルト', desc: '', ex: 'TRUE' }).error, true);
+    eq(!!k({ name: 'タルト', desc: '1個500円', ex: 'FALSE' }).error, true);
+  }],
+  ['新作:決めた時に、9〜20時台のあいだだけ投稿する。画像を置いてから5分あける', eq => {
+    const d = G('decide'), r = { state: '確認済み', kind: 'new', postDate: '2026-10-14', postHour: '15', publishedAt: '2026-10-14 15:10:00' };
+    eq(d(r, '2026-10-14 14:23:00', 12), 'wait');
+    eq(d(r, '2026-10-14 15:23:00', 12), 'post');
+    eq(d({ ...r, publishedAt: '2026-10-14 15:20:00' }, '2026-10-14 15:23:00', 12), 'wait');
+    eq(d({ ...r, postHour: '20' }, '2026-10-14 21:23:00', 12), 'wait');
+    eq(d({ ...r, postHour: '20' }, '2026-10-15 09:23:00', 12), 'post');
+    eq(d({ ...r, state: '失敗', tries: '1', updatedAt: '2026-10-14 20:23:00' }, '2026-10-14 22:23:00', 12), 'wait');
+  }],
+  ['新作:呼び名と、ストーリーズのシェアの知らせ', eq => {
+    eq(G('resLabel')({ kind: 'new', title: 'タルト', month: '' }), '新作「タルト」');
+    eq(G('resLabel')({ month: '2026-11' }), '11月の営業カレンダー');
+    eq(G('resLabel')({ month: 'TEST' }), '試しの投稿');
+    const sh = G('shareFor')([{ id: 'n1', kind: 'new', title: 'タルト', month: '', state: '投稿済み', permalink: 'https://x', postTo: 'feed', updatedAt: '2026-10-14 15:30:00' }], '2026-10-14 18:00:00', false);
+    eq(sh.label, '新作「タルト」');
+    eq(G('newImagePath')('2026-10-14', 'AB12cd'), 'posts/2026-10-14-ab12cd.jpg');
+    eq(G('deriveAlert')([{ kind: 'new', title: 'タルト', state: '失敗', tries: '3' }], false).message.includes('新作「タルト」'), true);
   }],
   ['Metaのエラー:トークン・アカウントが止められている・そのほか を見分ける', eq => {
     const k = G('graphErrorKind');

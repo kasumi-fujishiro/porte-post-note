@@ -114,6 +114,31 @@
         <div class="field"><label for="d-name">商品名(30文字まで)</label><input type="text" id="d-name" maxlength="40"></div>
         <div class="field"><label for="d-desc">ひとこと説明(60文字まで。味や特徴)</label><textarea id="d-desc" rows="2" maxlength="80"></textarea><span class="counter" id="d-count"></span></div>
         <div class="field"><label for="d-color">色</label><select id="d-color"></select></div>
+        <!-- 新作の自動投稿:写真を入れると、登録してから1時間以内にフィードへ投稿する -->
+        <div class="field"><span id="l-dphoto">写真(入れると、Instagramのフィードに新作として投稿します)</span>
+          <div class="row" role="group" aria-labelledby="l-dphoto">
+            <span class="filebtn">写真をえらぶ<input type="file" id="d-photo" accept="image/*" aria-label="写真をえらぶ"></span>
+            <span class="filebtn">その場で撮る<input type="file" id="d-cam" accept="image/*" capture="environment" aria-label="その場で撮る"></span>
+            <button type="button" class="small" id="d-photoClear" hidden>写真を外す</button>
+          </div>
+          <span class="hint" id="d-photoState"></span>
+        </div>
+        <div class="stack" id="d-postBox" hidden>
+          <div class="stage"><canvas id="d-cv" width="1080" height="1350" aria-label="投稿する画像のプレビュー"></canvas></div>
+          <div class="field" id="d-posWrap" hidden><label for="d-pos">写真の左右の位置</label><input type="range" id="d-pos" min="0" max="100" value="50"></div>
+          <label class="check"><input type="checkbox" id="d-post" checked>Instagramのフィードに、新作として投稿する</label>
+          <div class="stack" id="d-postInfo">
+            <p class="hint" id="d-when"></p>
+            <details class="box"><summary>時間を決める</summary>
+              <div class="row" style="margin-top:8px">
+                <div class="field grow"><label for="d-date">投稿する日</label><input type="date" id="d-date"></div>
+                <div class="field grow"><label for="d-hour">時</label><select id="d-hour"></select></div>
+              </div>
+              <div class="row"><button type="button" class="small" id="d-timeReset">1時間以内に戻す</button></div>
+            </details>
+            <p class="hint">投稿の文(商品名と説明。価格は入れません):<br><b id="d-caption" style="white-space:pre-wrap"></b></p>
+          </div>
+        </div>
         <div class="row"><button type="button" class="primary needs-edit" id="d-save">登録する</button><button type="button" id="d-cancel" hidden>やめる</button></div>
       </div>
       <div class="aibox">
@@ -221,10 +246,10 @@
 
 <script type="module">
 const APP = '<?= appUrl ?>', START_TAB = '<?= startTab ?>', START_MONTH = '<?= startMonth ?>';
-const { draw } = await import(APP + 'js/draw.js?v=18');
-const { FORMATS } = await import(APP + 'js/data.js?v=18');
-const CAL = await import(APP + 'js/calendar.js?v=18');
-const { CONFIG } = await import(APP + 'config.js?v=18');
+const { draw, cropAxis } = await import(APP + 'js/draw.js?v=19');
+const { FORMATS } = await import(APP + 'js/data.js?v=19');
+const CAL = await import(APP + 'js/calendar.js?v=19');
+const { CONFIG } = await import(APP + 'config.js?v=19');
 {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -322,11 +347,83 @@ const { CONFIG } = await import(APP + 'config.js?v=18');
   // ---------- 商品 ----------
   $('#d-color').innerHTML = Object.entries(COLORS).map(([k, [n]]) => `<option value="${k}">${n}</option>`).join('');
   $('#s-theme').innerHTML = $('#d-color').innerHTML;
-  function resetProductForm() { editProduct = ''; $('#d-name').value = ''; $('#d-desc').value = ''; $('#d-color').value = 'pink'; $('#productFormTitle').textContent = '商品を足す'; $('#d-cancel').hidden = true; countD(); }
-  const countD = () => { $('#d-count').textContent = `${$('#d-desc').value.trim().length} / 60文字`; aiProduct(); };
-  $('#d-desc').addEventListener('input', countD); $('#d-name').addEventListener('input', aiProduct);
+  function resetProductForm() { editProduct = ''; $('#d-name').value = ''; $('#d-desc').value = ''; $('#d-color').value = 'pink'; $('#productFormTitle').textContent = '商品を足す'; $('#d-cancel').hidden = true; clearDPhoto(); countD(); }
+  const countD = () => { $('#d-count').textContent = `${$('#d-desc').value.trim().length} / 60文字`; aiProduct(); drawD(); };
+  $('#d-desc').addEventListener('input', countD); $('#d-name').addEventListener('input', () => { aiProduct(); drawD(); });
+  $('#d-color').addEventListener('change', drawD);
+
+  // ---------- 新作の自動投稿(商品の写真) ----------
+  let dPhoto = null, dSlot = null, saveArmed = false;
+  const NEW_FROM = 9, NEW_TO = 20;
+  $('#d-hour').innerHTML = Array.from({ length: NEW_TO - NEW_FROM + 1 }, (_, i) => `<option value="${NEW_FROM + i}">${NEW_FROM + i}時台</option>`).join('');
+  const wantPost = () => !!dPhoto && $('#d-post').checked;
+  function dState() {
+    return { kind: 'new', photo: dPhoto, photoPos: +$('#d-pos').value, badge: 'NEW', theme: S && S.settings.theme,
+      product: { name: $('#d-name').value.trim() || '商品名', desc: $('#d-desc').value.trim(), color: $('#d-color').value } };
+  }
+  async function drawD() {
+    if (!dPhoto) return;
+    const cv = $('#d-cv'), st = dState(), axis = cropAxis(dPhoto, FORMATS.feed.w, FORMATS.feed.h);
+    $('#d-posWrap').hidden = !axis; $('#d-posWrap label').textContent = axis === 'x' ? '写真の左右の位置' : '写真の上下の位置';
+    draw(cv, FORMATS.feed, st);
+    $('#d-caption').textContent = [st.product.name, st.product.desc].filter(Boolean).join('\n');
+    if (document.fonts) { await document.fonts.load('40px "Potta One"', 'NEW' + st.product.name).catch(() => {}); await document.fonts.load('40px "Yusei Magic"', st.product.desc || 'あ').catch(() => {}); draw(cv, FORMATS.feed, dState()); }
+  }
+  function paintWhen() {
+    $('#d-postInfo').hidden = !$('#d-post').checked;
+    $('#d-when').textContent = dSlot ? `${+dSlot.date.slice(5, 7)}月${+dSlot.date.slice(8)}日の${dSlot.hour}時台に投稿します。` : '登録してから1時間以内に投稿します(9時〜20時台。夜に登録したときは、次の朝9時台)。';
+    $('#d-save').textContent = wantPost() ? '登録して、投稿を予約する' : '登録する';
+    saveArmed = false;
+  }
+  function clearDPhoto() { dPhoto = null; dSlot = null; $('#d-pos').value = 50; $('#d-postBox').hidden = true; $('#d-photoClear').hidden = true; $('#d-photoState').textContent = ''; $('#d-post').checked = true; paintWhen(); }
+  async function pickDPhoto(file) {
+    if (!file) return;
+    $('#d-photoState').textContent = '写真を読み込んでいます…';
+    try {
+      const url = URL.createObjectURL(file), img = await new Promise((ok, ng) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ng; i.src = url; });
+      // 長辺1920ピクセルに縮めて使う
+      const k = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      dPhoto = c; $('#d-pos').value = 50; $('#d-postBox').hidden = false; $('#d-photoClear').hidden = false; $('#d-photoState').textContent = '写真が入っています。下のできあがりを確かめてください。';
+      paintWhen(); drawD();
+    } catch { $('#d-photoState').textContent = 'この写真は読み込めませんでした。別の写真をえらんでください。'; }
+  }
+  ['#d-photo', '#d-cam'].forEach(sel => $(sel).addEventListener('change', e => { pickDPhoto(e.target.files && e.target.files[0]); e.target.value = ''; }));
+  $('#d-photoClear').addEventListener('click', clearDPhoto);
+  $('#d-pos').addEventListener('input', drawD);
+  $('#d-post').addEventListener('change', paintWhen);
+  const pickSlot = () => { dSlot = $('#d-date').value ? { date: $('#d-date').value, hour: +$('#d-hour').value } : null; paintWhen(); };
+  $('#d-date').addEventListener('change', pickSlot); $('#d-hour').addEventListener('change', pickSlot);
+  $('#d-timeReset').addEventListener('click', () => { $('#d-date').value = ''; dSlot = null; paintWhen(); });
+
   $('#d-save').addEventListener('click', async () => {
-    if (await call('saveProduct', { id: editProduct, name: $('#d-name').value, desc: $('#d-desc').value, color: $('#d-color').value })) resetProductForm();
+    const input = { id: editProduct, name: $('#d-name').value, desc: $('#d-desc').value, color: $('#d-color').value };
+    if (!wantPost()) { if (await call('saveProduct', input, null)) resetProductForm(); return; }
+    // 投稿するときは、まちがえて押さないように2回押したときだけ
+    const btn = $('#d-save');
+    if (!saveArmed) { saveArmed = true; btn.textContent = 'もう一度押すと、登録して投稿を予約します'; setTimeout(() => { if (saveArmed) paintWhen(); }, 5000); return; }
+    saveArmed = false; btn.disabled = true; say('画像を作っています…');
+    try {
+      const c = document.createElement('canvas'); draw(c, FORMATS.feed, dState());
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9)), buf = await blob.arrayBuffer();
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(b => b.toString(16).padStart(2, '0')).join('');
+      const r = await run('saveProduct', input, { image: { size: blob.size, hash }, slot: dSlot }, S.version);
+      if (r.state) S = r.state;
+      if (!r.ok) { paint(); say(r.error, true); return; }
+      say(r.message + ' 画像を送っています…');
+      // 画像を、使い捨ての合言葉と一緒に公開窓口へ送る
+      let b64 = ''; const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 32768) b64 += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+      b64 = btoa(b64);
+      let sent = null;
+      try { sent = await (await fetch(CONFIG.feedUrl, { method: 'POST', body: JSON.stringify({ type: 'postImage', resId: r.resId, ticket: r.ticket, image: b64 }) })).json(); } catch (e) { sent = null; }
+      S = await run('getState'); paint(); resetProductForm();
+      if (sent && sent.ok) say(r.message);
+      else say(r.message.replace(/。.*$/, '。') + ' ただ、画像を送れませんでした。メニューの「最近の投稿」でこの予約を取り消してから、もう一度登録してください。' + (sent && sent.error ? `(${sent.error})` : ''), true);
+    } catch (e) {
+      say('うまくいきませんでした。もう一度押してください。(' + ((e && e.message) || e) + ')', true);
+    } finally { btn.disabled = false; paintWhen(); }
   });
   $('#d-cancel').addEventListener('click', () => { resetProductForm(); say(''); });
   $('#productList').addEventListener('click', e => {
@@ -484,13 +581,19 @@ const { CONFIG } = await import(APP + 'config.js?v=18');
   $('#c-showimg').addEventListener('click', async () => { const img = $('#c-img'); img.src = URL.createObjectURL(await calBlob(calFmt())); img.hidden = false; say('下の画像を長押し(パソコンは右クリック)して保存してください。'); });
 
   // ---------- 最近の投稿 ----------
+  // 予約の呼び名(gas/core/NewPost.js の resLabel と同じ)
+  function resLabel(r) {
+    const m = /^(\d{4})-(\d{2})$/.exec((r && r.month) || '');
+    if (r && r.kind === 'new') return r.month === 'TEST' ? '試しの投稿(新作)' : `新作「${r.title || ''}」`;
+    return m ? `${+m[2]}月の営業カレンダー` : '試しの投稿';
+  }
   const STATE_HINT = { '確認済み': '投稿を待っています', '投稿中': '投稿しています', '投稿済み': '投稿しました', '失敗': 'うまくいきませんでした', '要確認': '投稿できたか分かりません', '取り消し': '取り消しました' };
   function paintRecent() {
     $('#recent').innerHTML = (S.recent || []).map(r => {
       const isCal = /^\d{4}-\d{2}$/.test(r.month);
-      // 営業カレンダーは「投稿する日」、試しの投稿は「作った日時」を出す
-      const label = isCal ? `${+r.month.slice(5)}月の営業カレンダー` : '試しの投稿';
-      const when = isCal ? `${r.postDate || ''}に投稿` : `${(r.createdAt || '').slice(5, 16)}に作った`;
+      // 営業カレンダーは「投稿する日」、新作は「投稿する日と時」、試しの投稿は「作った日時」を出す
+      const label = resLabel(r);
+      const when = isCal ? `${r.postDate || ''}に投稿` : r.kind === 'new' && r.month !== 'TEST' ? `${r.postDate || ''} ${r.postHour || ''}時台に投稿` : `${(r.createdAt || '').slice(5, 16)}に作った`;
       const cancel = `<button type="button" class="small needs-edit" data-resolve="cancel" data-id="${r.id}">取り消す</button>`;
       const acts = r.state === '要確認' ? `<button type="button" class="small needs-edit" data-resolve="posted" data-id="${r.id}">投稿済みにする</button><button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>${cancel}`
         : r.state === '失敗' ? `<button type="button" class="small needs-edit" data-resolve="retry" data-id="${r.id}">もう一度出す</button>${cancel}`
@@ -567,7 +670,7 @@ const { CONFIG } = await import(APP + 'config.js?v=18');
     put('calendar', n.state === 'due' || n.state === 'late' ? `${n.tm}月の営業日を確認してください` : n.state === 'ok' ? `${n.tm}月は確認ずみ` : `${next.getMonth() + 1}月:${CAL_WORD[(S.calendarState || {})[nk]] || 'まだ確認していません'}`, n.state === 'due' || n.state === 'late');
     const bad = (S.recent || []).filter(r => r.month !== 'TEST' && (r.state === '要確認' || r.state === '失敗'));
     const last = (S.recent || []).find(r => r.month !== 'TEST');
-    put('recent', bad.length ? `確かめてほしいものが${bad.length}件あります` : last ? `${+last.month.slice(5)}月の分:${STATE_HINT[last.state] || last.state}` : 'まだありません', bad.length);
+    put('recent', bad.length ? `確かめてほしいものが${bad.length}件あります` : last ? `${resLabel(last)}:${STATE_HINT[last.state] || last.state}` : 'まだありません', bad.length);
     put('settings', `画面の形:${LAYOUT_NAMES[(S.settings || {}).layout] || '今の形'}`);
     put('logs', S.logs.count ? `${S.logs.count}回・平均${S.logs.avg}秒` : 'まだ記録がありません');
     put('more', S.problems.length ? `直してほしい行が${S.problems.length}件あります` : '登録できる人など', S.problems.length);

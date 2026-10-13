@@ -60,7 +60,7 @@ function state_(me) {
     // 月ごとの、いちばん新しい予約
     reservations: latestReservations_(tables.reservations),
     recent: tables.reservations.filter(r => r.id).sort((a, b) => ((a.createdAt || '') < (b.createdAt || '') ? 1 : -1)).slice(0, 10)
-      .map(r => ({ id: r.id, month: r.month, state: r.state, postTo: r.postTo, postDate: r.postDate, mediaId: r.mediaId, lastError: r.lastError, tries: r.tries, createdAt: r.createdAt, updatedAt: r.updatedAt })),
+      .map(r => ({ id: r.id, month: r.month, kind: r.kind, title: r.title, postHour: r.postHour, state: r.state, postTo: r.postTo, postDate: r.postDate, mediaId: r.mediaId, lastError: r.lastError, tries: r.tries, createdAt: r.createdAt, updatedAt: r.updatedAt })),
     calendarState: feed.calendarState, schedule: feed.settings.schedule, regular: feed.settings.regular, firstUse: feed.settings.firstUse, postTo: feed.settings.postTo
   };
 }
@@ -110,15 +110,51 @@ function savePhrase(input, baseVersion) {
   });
 }
 
-function saveProduct(input, baseVersion) {
+// 商品を登録する(直す)。post があれば、新作としてInstagramのフィードに投稿する予約も作る。
+//   post: { image: { size, hash }, slot: { date, hour } | null }  slot がなければ、1時間以内(9〜20時台)
+// 画像は、このあと画面から公開窓口に送る(使い捨ての合言葉 ticket を返す)
+function saveProduct(input, post, baseVersion) {
   const c = cleanProduct(input);
   if (c.error) return { error: c.error };
-  return mutate_(baseVersion, () => {
+  if (post) {
+    const image = post.image || {};
+    if (!(+image.size > 0 && +image.size < 8 * 1024 * 1024) || !/^[0-9a-f]{64}$/.test(image.hash || '')) return { error: '画像を作れませんでした。写真をえらび直して、もう一度押してください。' };
+    // 予約の表に、新作の列があるか(1時間ごとの自動実行が足す)
+    const cols = SHEETS.reservations.cols, head = sheet_('reservations').getRange(1, 1, 1, cols.length).getDisplayValues()[0];
+    if (head.some((h, i) => h !== cols[i][1])) return { error: 'シートの準備が、まだ終わっていません。1時間ほど待ってから、もう一度登録してください。' };
+  }
+  let made = null;
+  const r = mutate_(baseVersion, () => {
     const now = nowText_();
-    if (input.id) { setCells_('products', findRow_('products', input.id), { name: c.value.name, desc: c.value.desc, color: c.value.color, ex: 'FALSE', updatedAt: now }); return { message: '商品を直しました。' }; }
-    appendRows_('products', [{ id: newId_(), name: c.value.name, desc: c.value.desc, color: c.value.color, order: String(nextOrder_('products')), hidden: 'FALSE', ex: 'FALSE', updatedAt: now }]);
-    return { message: '商品を登録しました。' };
+    let id = input.id;
+    if (post && id) {
+      const before = readTable_('products').find(x => x.id === id);
+      if (before && String(before.ex).toUpperCase() === 'TRUE') return { error: '「例」の商品は、Instagramに投稿できません。「商品を足す」から、お店の商品を登録してください。' };
+    }
+    const value = { name: c.value.name, desc: c.value.desc, color: c.value.color };
+    if (post) { const k = checkNewPost(Object.assign({ ex: 'FALSE' }, value)); if (k.error) return { error: k.error }; }
+    let slot = null;
+    if (post) {
+      if (post.slot) { const s = cleanSlot(post.slot, now); if (s.error) return { error: s.error }; slot = s.value; } else slot = newPostSlot(now);
+    }
+    if (id) setCells_('products', findRow_('products', id), Object.assign({ ex: 'FALSE', updatedAt: now }, value));
+    else { id = newId_(); appendRows_('products', [Object.assign({ id, order: String(nextOrder_('products')), hidden: 'FALSE', ex: 'FALSE', updatedAt: now }, value)]); }
+    const done = input.id ? '商品を直しました。' : '商品を登録しました。';
+    if (!post) return { message: done };
+    const resId = newId_(), ticket = Utilities.getUuid().replace(/-/g, '');
+    appendRows_('reservations', [{
+      id: resId, kind: 'new', month: '', title: value.name, caption: captionForProduct(value), productId: id,
+      postTo: 'feed', postDate: slot.postDate, postHour: String(slot.postHour), state: '確認済み',
+      imagePath: newImagePath(slot.postDate, resId), imageSize: String(post.image.size), imageHash: post.image.hash, tries: '0',
+      createdAt: now, updatedAt: now, ticket
+    }]);
+    made = { resId, ticket };
+    const today = now.slice(0, 10), within = slot.postDate === today && slot.postHour === +now.slice(11, 13);
+    const when = within && !post.slot ? '1時間以内' : slot.postDate === today ? `今日の${slot.postHour}時台` : slot.postDate === nextDay(today) ? `明日の${slot.postHour}時台` : `${+slot.postDate.slice(5, 7)}月${+slot.postDate.slice(8)}日の${slot.postHour}時台`;
+    return { message: `${done}${when}に、Instagramのフィードに新作として投稿します。やめるときは、メニューの「最近の投稿」で取り消せます。` };
   });
+  if (r.ok && made) Object.assign(r, made);
+  return r;
 }
 
 // しまう(hidden: true)/戻す(hidden: false)。消さずに印をつけるだけ

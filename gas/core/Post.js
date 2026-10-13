@@ -19,13 +19,18 @@ const hourOf = t => +String(t).slice(11, 13);
 //   'wait'    :まだ何もしない
 function decide(res, now, postHour) {
   if (!res || !res.state) return 'wait';
+  const isNew = res.kind === 'new';
   if (res.state === '投稿中') {
     if (res.phase === 'publishing') return 'unknown';
     if (res.phase === 'container' && res.containerId) return 'resume';
     return 'restart';
   }
-  const due = res.postDate && (dayOf(now) > res.postDate || (dayOf(now) === res.postDate && hourOf(now) >= +postHour));
-  if (res.state === '確認済み') return due && res.publishedAt ? 'post' : 'wait';
+  // 新作は、予約ごとの「投稿する時」に、9〜20時台のあいだだけ出す
+  const hour = isNew ? +res.postHour : +postHour;
+  if (isNew && !inPostHours(now)) return 'wait';
+  const due = res.postDate && (dayOf(now) > res.postDate || (dayOf(now) === res.postDate && hourOf(now) >= hour));
+  // 画像をGitHubに置いてから、公開のページに出るまで少しかかるので、5分あける
+  if (res.state === '確認済み') return due && res.publishedAt && minutesBetween(res.publishedAt, now) >= 5 ? 'post' : 'wait';
   if (res.state === '失敗') {
     const tries = +res.tries || 0;
     if (res.tokenBad === 'TRUE' || tries >= MAX_TRIES) return 'wait';
@@ -66,11 +71,12 @@ function deriveAlert(reservations, tokenBad, blocked) {
   const live = (reservations || []).filter(r => r.month !== 'TEST').filter(r => r.state === '要確認' || (r.state === '失敗' && ((+r.tries || 0) >= MAX_TRIES || r.tokenBad === 'TRUE')));
   if (!live.length) return null;
   const r = live.sort((a, b) => ((a.updatedAt || '') < (b.updatedAt || '') ? 1 : -1))[0];
-  const m = /^(\d{4})-(\d{2})$/.exec(r.month || '');
-  const label = m ? `${+m[2]}月の営業カレンダー` : '営業カレンダー';
+  const label = resLabel(r);
   return r.state === '要確認'
     ? { kind: 'check', month: r.month, message: `${label}が、投稿できたか分かりません。お店の人用のページの「最近の投稿」で確かめてください。` }
-    : { kind: 'failed', month: r.month, message: `${label}を、自動で投稿できませんでした。お店の人用のページから画像を保存して、手で投稿してください。` };
+    : { kind: 'failed', month: r.month, message: r.kind === 'new'
+      ? `${label}を、自動で投稿できませんでした。お店の人用のページの「最近の投稿」で「もう一度出す」を押してください。`
+      : `${label}を、自動で投稿できませんでした。お店の人用のページから画像を保存して、手で投稿してください。` };
 }
 
 // 確認のお知らせをLINEで送る日か。返り値:送る文の種類 'notice1' | 'notice2' | ''
@@ -100,11 +106,11 @@ function isStale(lastOkAt, now) {
 // includeTest:試しの投稿も含める(ALLOW_TEST_POSTS が yes のとき。確かめのため)
 function shareFor(reservations, now, includeTest) {
   const list = (reservations || []).filter(r => r.state === '投稿済み' && r.permalink && r.postTo !== 'story'
-    && (/^\d{4}-\d{2}$/.test(r.month || '') || (includeTest && r.month === 'TEST'))
+    && (/^\d{4}-\d{2}$/.test(r.month || '') || (r.kind === 'new' && r.month !== 'TEST') || (includeTest && r.month === 'TEST'))
     && minutesBetween(r.updatedAt, now) <= 48 * 60);
   if (!list.length) return null;
   const r = list.sort((a, b) => ((a.updatedAt || '') < (b.updatedAt || '') ? 1 : -1))[0];
-  return { id: r.id, month: r.month, permalink: r.permalink };
+  return { id: r.id, month: r.month, label: resLabel(r), permalink: r.permalink };
 }
 
 if (typeof module !== 'undefined') module.exports = { graphErrorKind, shareFor, MAX_TRIES, decide, afterFailure, deriveAlert, lineNoticeKind, daysUntil, isStale, minutesBetween };

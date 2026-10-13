@@ -1,13 +1,13 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=18';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=18';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=18';
-import { chooseLayout, applyLayout } from './layout.js?v=18';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=18';
-import { monthInfo, noticeFor } from './calendar.js?v=18';
-import { CONFIG } from '../config.js?v=18';
-import { ls, photoStore } from './store.js?v=18';
-import { draw, cropAxis } from './draw.js?v=18';
+import { FORMATS, KINDS } from './data.js?v=19';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=19';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=19';
+import { chooseLayout, applyLayout } from './layout.js?v=19';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=19';
+import { monthInfo, noticeFor } from './calendar.js?v=19';
+import { CONFIG } from '../config.js?v=19';
+import { ls, photoStore } from './store.js?v=19';
+import { draw, cropAxis } from './draw.js?v=19';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -200,12 +200,12 @@ function updateNotice() {
   $('#noticeText').append(small);
   $('#noticeGo').hidden = !CONFIG.adminUrl;
 }
-// 営業カレンダーを投稿したら、2日間「ストーリーズでもシェアしましょう」と出す(「シェアした」で消える。スマホごと)
+// 営業カレンダーや新作をフィードに投稿したら、2日間「ストーリーズでもシェアしましょう」と出す(「シェアした」で消える。スマホごと)
 function paintShare() {
   const s = data.share, done = ls.get('pn-shared', []);
   const show = !!(s && s.permalink && !done.includes(s.id));
   $('#share').hidden = !show; if (!show) return;
-  const label = /^\d{4}-\d{2}$/.test(s.month) ? `${+s.month.slice(5)}月の営業カレンダー` : '試しの投稿';
+  const label = s.label || (/^\d{4}-\d{2}$/.test(s.month) ? `${+s.month.slice(5)}月の営業カレンダー` : '試しの投稿');
   $('#shareText').textContent = `${label}をInstagramに投稿しました。ストーリーズでもシェアしましょう。`;
   $('#shareGo').href = s.permalink;
 }
@@ -249,7 +249,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=18';
+parkImg.src = 'images/parking.jpg?v=19';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',

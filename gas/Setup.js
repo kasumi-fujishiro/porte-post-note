@@ -71,6 +71,21 @@ function setupSheet() {
   console.log(`できました。シート:${book.getUrl()}`);
 }
 
+// あとから足した列の見出しを、表の右に足す(1時間ごとの自動実行が、持ち主として呼ぶ)。
+// 前からある列の見出しが、決まりどおりのときだけ足す(ちがうときは、手で setupSheet を実行してもらう)
+function ensureColumns_() {
+  Object.keys(SHEETS).forEach(key => {
+    const sh = sheet_(key), cols = SHEETS[key].cols, have = sh.getLastColumn();
+    if (have >= cols.length) return;
+    const head = sh.getRange(1, 1, 1, have).getDisplayValues()[0];
+    if (head.some((h, i) => h !== cols[i][1])) { logRun_('列を足す', '見送り', `シート「${SHEETS[key].name}」の見出しが決まりとちがうので、setupSheet を実行してください`); return; }
+    const add = cols.slice(have);
+    sh.getRange(1, have + 1, sh.getMaxRows(), add.length).setNumberFormat('@');
+    sh.getRange(1, have + 1, 1, add.length).setValues([add.map(c => c[1])]).setFontWeight('bold').setBackground('#EDF1E8');
+    logRun_('列を足す', '成功', `シート「${SHEETS[key].name}」に、${add.map(c => c[1]).join('・')}の列を足しました`);
+  });
+}
+
 // 持ち主しか直せない保護。前に「注意だけ」で作ったものがあれば、強くする
 function protectStrict_(sh, range, why) {
   let p = sh.getProtections(SpreadsheetApp.ProtectionType.RANGE).find(x => x.getDescription() === why);

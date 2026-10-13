@@ -31,6 +31,7 @@ function hourlyJob() {
   const t0 = Date.now(), lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) { logRun_('自動実行', '見送り', 'ほかの実行が動いています'); return; }
   try {
+    try { ensureColumns_(); } catch (e) { logRun_('列を足す', '失敗', e.message); }
     const settings = settingsMap_();
     // 「トークンが使えない」の印がついている間は、毎回トークンを試し、使えれば印を消す
     if (prop_('TOKEN_BAD', false) === 'yes' || prop_('IG_BLOCKED', false) === 'yes') {
@@ -66,6 +67,7 @@ function hourlyJob() {
 
 function captionFor_(r) {
   if (r.postTo === 'story') return '';
+  if (r.kind === 'new') return r.caption || r.title || '';
   const m = /^(\d{4})-(\d{2})$/.exec(r.month || '');
   return m ? `${+m[1]}年${+m[2]}月の営業日のお知らせです。` : '投稿ノートのテスト投稿です。';
 }
@@ -89,7 +91,7 @@ function postOne_(r, act, t0, settings) {
       set({ containerId, phase: 'container' });
     }
     const st = igWaitUntil_(containerId, t0 + JOB_BUDGET_MS - 20000);
-    if (st === 'IN_PROGRESS') { logRun_('投稿', '続きは次の回', `${r.month}:下書きの準備を待っています`); return; }
+    if (st === 'IN_PROGRESS') { logRun_('投稿', '続きは次の回', `${resLabel(r)}:下書きの準備を待っています`); return; }
     if (st !== 'FINISHED') throw postError_(`下書きの準備ができませんでした(${st})。`);
     set({ phase: 'publishing' });
     SpreadsheetApp.flush();
@@ -101,15 +103,15 @@ function postOne_(r, act, t0, settings) {
     }
     set({ state: '投稿済み', phase: '', mediaId, lastError: '', tokenBad: '' });
     setProp_('TOKEN_BAD', ''); setProp_('IG_BLOCKED', '');
-    logRun_('投稿', '成功', `${r.month}:投稿のID ${mediaId}`);
+    logRun_('投稿', '成功', `${resLabel(r)}:投稿のID ${mediaId}`);
     // 投稿のリンクを残す(アプリの「ストーリーズでシェア」に使う)
     let permalink = '';
     try { const p = graph_('get', mediaId, { fields: 'permalink' }); if (p.code === 200 && p.json.permalink) permalink = p.json.permalink; } catch (e) { permalink = ''; }
     if (permalink) set({ permalink });
-    // 営業カレンダーを投稿したら、LINEで知らせる(試しの投稿では送らない)
+    // 営業カレンダーや新作を投稿したら、LINEで知らせる(試しの投稿では送らない)
     if (r.month !== 'TEST') {
       const share = r.postTo === 'story' ? '' : '\n\nストーリーズでもシェアしてください:下のリンクを開く → 投稿の下の紙飛行機のボタン →「ストーリーズに追加」。アプリにも、シェアのボタンが出ています。';
-      notifyOnce_(`posted:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、Instagramの${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'}に投稿しました。${share}${permalink ? '\n' + permalink : ''}`);
+      notifyOnce_(`posted:${r.id}`, `【投稿ノート】${resLabel(r)}を、Instagramの${r.postTo === 'story' ? 'ストーリーズ' : 'フィード'}に投稿しました。${share}${permalink ? '\n' + permalink : ''}`);
     }
   } catch (e) {
     const stop = e.token || e.account;
@@ -117,7 +119,7 @@ function postOne_(r, act, t0, settings) {
     if (e.token) setProp_('TOKEN_BAD', 'yes');
     if (e.account) { setProp_('IG_BLOCKED', 'yes'); notifyOnce_(`account:${nowText_().slice(0, 10)}`, ACCOUNT_LINE); }
     set({ state: a.state, phase: '', containerId: '', tries: a.tries, tokenBad: a.tokenBad, lastError: e.message });
-    logRun_('投稿', '失敗', `${r.month}:${e.message}`);
+    logRun_('投稿', '失敗', `${resLabel(r)}:${e.message}`);
     if (r.month === 'TEST') {
       // 試しの予約のときは、試しと分かる文にする(お店の投稿は止まっていない)
       if ((e.token || a.giveUp) && !e.account) notifyOnce_(`test:${r.id}`, `【投稿ノート・試し】試しの投稿が、うまくいきませんでした(${e.token ? 'トークンが使えない' : `${a.tries}回やり直した`})。お店の投稿のことではありません。管理する人が、シートの「動作記録」で理由を確かめてください。`);
@@ -126,21 +128,18 @@ function postOne_(r, act, t0, settings) {
     } else if (e.token) {
       notifyOnce_(`token:${nowText_().slice(0, 10)}`, `【投稿ノート】Instagramに投稿するための鍵(トークン)が使えなくなりました。自動の投稿は止まっています。管理する人に、作り直しを頼んでください。今月の分は、アプリから画像を保存して手で投稿してください。\n${appLink_()}`);
     } else if (a.giveUp) {
-      notifyOnce_(`failed:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}を、自動で投稿できませんでした(${a.tries}回やり直しました)。アプリの「登録・確認(お店の人用)」から画像を保存して、手で投稿してください。\n${appLink_()}`);
+      const what = r.kind === 'new' ? 'アプリの「登録・確認(お店の人用)」の「最近の投稿」で「もう一度出す」を押してください' : 'アプリの「登録・確認(お店の人用)」から画像を保存して、手で投稿してください';
+      notifyOnce_(`failed:${r.id}`, `【投稿ノート】${resLabel(r)}を、自動で投稿できませんでした(${a.tries}回やり直しました)。${what}。\n${appLink_()}`);
     }
   }
 }
 
 function markCheck_(r, why) {
   setCells_('reservations', r.row, { state: '要確認', phase: '', lastError: why, updatedAt: nowText_() });
-  logRun_('投稿', '要確認', `${r.month}:${why}`);
-  notifyOnce_(`check:${r.id}`, `【投稿ノート】${monthLabel_(r.month)}が、投稿できたか分かりません。Instagramを見て、アプリの「登録・確認(お店の人用)」の「最近の投稿」で「投稿済みにする」か「もう一度出す」を選んでください。\n${appLink_()}`);
+  logRun_('投稿', '要確認', `${resLabel(r)}:${why}`);
+  notifyOnce_(`check:${r.id}`, `【投稿ノート】${resLabel(r)}が、投稿できたか分かりません。Instagramを見て、アプリの「登録・確認(お店の人用)」の「最近の投稿」で「投稿済みにする」か「もう一度出す」を選んでください。\n${appLink_()}`);
 }
 
-function monthLabel_(month) {
-  const m = /^(\d{4})-(\d{2})$/.exec(month || '');
-  return m ? `${+m[2]}月の営業カレンダー` : '試しの投稿';
-}
 
 // 下書きの準備ができるまで、Metaの案内どおり1分おきに確かめる。deadline を過ぎたら IN_PROGRESS を返す
 function igWaitUntil_(containerId, deadline) {

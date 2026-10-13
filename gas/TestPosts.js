@@ -5,23 +5,25 @@ function testGuard_() {
   if (prop_('ALLOW_TEST_POSTS', false) !== 'yes') throw new Error('試しの投稿は止めてあります(設定欄の ALLOW_TEST_POSTS が yes ではありません)。');
 }
 
-// 試しの予約を1つ作る。画像(試しのカレンダー)をGitHubに置き、公開されるのを待つ。
+// 試しの予約を1つ作る。画像(試しのフィードの画像)をGitHubに置き、公開されるのを待つ。
+// 10月14日から、新作の自動投稿と同じ形(種類 new、投稿する時つき)で作る。営業カレンダーの形はもう試しが通っている。
 // このあと hourlyJob を実行すると(または次の自動実行で)、テスト用のInstagramに投稿される
 function testMakeReservationNow() {
   testGuard_();
+  ensureColumns_();
   const id = newId_(), now = nowText_();
   const blob = UrlFetchApp.fetch(imageBaseUrl_() + 'tests/assets/sample-feed.jpg').getBlob().setContentType('image/jpeg');
-  const bytes = blob.getBytes(), path = `calendar/test-${id}.jpg`;
+  const bytes = blob.getBytes(), path = `posts/test-${id}.jpg`;
   githubPutImage_(path, blob, '試しの投稿の画像を置く');
-  // 投稿する日は昨日にする(すぐに投稿の対象になるように)
-  const yesterday = Utilities.formatDate(new Date(Date.now() - 86400000), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const slot = newPostSlot(now);
   appendRows_('reservations', [{
-    id, month: 'TEST', postTo: 'feed', postDate: yesterday, state: '確認済み', imagePath: path,
+    id, month: 'TEST', kind: 'new', title: '試しの新作', caption: '投稿ノートのテスト投稿です(新作の自動投稿の試し)',
+    postTo: 'feed', postDate: slot.postDate, postHour: String(slot.postHour), state: '確認済み', imagePath: path,
     imageSize: String(bytes.length), imageHash: sha256Hex_(bytes), driveFileId: 'test', tries: '0',
     createdAt: now, updatedAt: now, publishedAt: now
   }]);
   const ok = waitForPublicImage_(imageBaseUrl_() + path, bytes.length, 240);
-  console.log(`試しの予約を作りました(${id})。画像は${ok ? '公開されました' : 'まだ公開されていません(数分待ってください)'}。hourlyJob を実行すると(または次の自動実行で)投稿されます。`);
+  console.log(`試しの予約を作りました(${id}、${slot.postDate}の${slot.postHour}時台)。画像は${ok ? '公開されました' : 'まだ公開されていません(数分待ってください)'}。hourlyJob を実行すると(または次の自動実行で)投稿されます。`);
 }
 
 // 「投稿中」で止まった予約を作る(公開を送ったあとの状態)。hourlyJob を実行すると「要確認」になり、投稿されない

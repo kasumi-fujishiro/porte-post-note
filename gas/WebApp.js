@@ -9,16 +9,16 @@ function doGet(e) {
 
 function doPost(e) {
   const body = e && e.postData ? e.postData.contents : '';
-  // 管理ページからの、カレンダーの画像(使い捨ての合言葉つき)
-  if (body.indexOf('"type":"calendarImage"') >= 0) {
+  // 管理ページからの、投稿する画像(営業カレンダー・新作。使い捨ての合言葉つき)
+  if (body.indexOf('"type":"calendarImage"') >= 0 || body.indexOf('"type":"postImage"') >= 0) {
     let data = null;
     try { data = JSON.parse(body); } catch (err) { data = null; }
-    if (data && data.type === 'calendarImage') return json_(receiveCalendarImage_(data));
+    if (data && (data.type === 'calendarImage' || data.type === 'postImage')) return json_(receiveCalendarImage_(data));
   }
   return json_(appendLogs_(body));
 }
 
-// カレンダーの画像を受けとる。合言葉と、大きさ・ハッシュ値が予約の行と合うときだけ、
+// 投稿する画像(営業カレンダー・新作)を受けとる。合言葉と、大きさ・ハッシュ値が予約の行と合うときだけ、
 // 持ち主のドライブ(非公開)に原本を置き、GitHubに公開用の写しを置く
 function receiveCalendarImage_(data) {
   const resId = String(data.resId || ''), ticket = String(data.ticket || ''), b64 = String(data.image || '');
@@ -35,7 +35,7 @@ function receiveCalendarImage_(data) {
     const file = DriveApp.getFolderById(prop_('DRIVE_FOLDER_ID')).createFile(blob);
     setCells_('reservations', r.row, { driveFileId: file.getId(), ticket: '', updatedAt: nowText_() });
     const published = publishImage_(r, blob);
-    logRun_('カレンダーの画像を受けとる', '成功', `${r.month}:${published ? 'GitHubに公開した' : '公開は次の自動実行で'}`);
+    logRun_('投稿する画像を受けとる', '成功', `${resLabel(r)}:${published ? 'GitHubに公開した' : '公開は次の自動実行で'}`);
     return { ok: true, published };
   } finally { lock.releaseLock(); }
 }
@@ -43,12 +43,12 @@ function receiveCalendarImage_(data) {
 // GitHubに公開用の写しを置く。だめなら、次の自動実行でやり直す(原本はドライブにある)
 function publishImage_(r, blob) {
   try {
-    githubPutImage_(r.imagePath, blob, `営業カレンダー ${r.month} の画像を置く`);
+    githubPutImage_(r.imagePath, blob, `${resLabel(r)} の画像を置く`);
     setCells_('reservations', r.row, { publishedAt: nowText_(), lastError: '' });
     return true;
   } catch (e) {
     setCells_('reservations', r.row, { lastError: 'GitHubに置けませんでした:' + e.message });
-    logRun_('カレンダーの画像を公開する', '失敗', e.message);
+    logRun_('投稿する画像を公開する', '失敗', e.message);
     return false;
   }
 }
@@ -68,7 +68,7 @@ function json_(obj) {
 // 配信データ。版番号が変わるまでは、作ったものを使い回す(シートのほかの表を毎回読まないため)
 // 版番号はシートから読む(管理ページは別のプロジェクトなので、ここの設定欄は書きかえられない)
 // 配信データの形や、知らせの決まりを変えたら、この番号を上げる(保存してある古い形を使わないため)
-const FEED_FORMAT = 3;
+const FEED_FORMAT = 4;
 
 function feedData_() {
   // 版番号と形の番号に加えて、最後に正しく動いた日時と、トークン・アカウントの状態が変わったら作り直す
