@@ -60,12 +60,14 @@ export function applyLayout(name, api) {
     if (back || title) f.append(top);
     const b = el('div', 'scr-body'); body.forEach(x => x && b.append(x)); f.append(b);
     if (bottom && bottom.length) { const bt = el('div', 'scr-bottom'); bottom.forEach(x => x && bt.append(x)); f.append(bt); }
+    if (b.contains(parts.stage)) parts.stage.append(parts.timer);
     root.append(f);
     window.scrollTo(0, 0);
     window.dispatchEvent(new Event('pn:layout'));
   }
   const notices = () => NOTICES.map(id => parts[id]);
-  const bottomParts = () => [parts.actions, parts.status, parts.timer, parts.extraRow];
+  // 作業時間は、できあがりの左上に出す(下の段を1つ減らして、できあがりを大きくする)
+  const bottomParts = () => [parts.actions, parts.status, parts.extraRow];
 
   // できあがり中心(A)の1画面。tabs:種類に合わせた切りかえ
   let tab = '';

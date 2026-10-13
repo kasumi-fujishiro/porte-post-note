@@ -210,3 +210,34 @@ body[data-layout] .tabs a { min-height: 36px; padding: 4px 12px; font-size: 13px
 }
 /* 共有のボタンは1行に収める */
 .scr-bottom #actions button { white-space: nowrap; font-size: clamp(13px, 3.8vw, 16px); }
+
+/* ===== 画面の形(S / A / C):できあがりを大きくする ===== */
+/* 上:題は出さず、切りかえのボタンとベルを1行に */
+body[data-layout] .top h1 { display: none; }
+body[data-layout] .top { flex-wrap: nowrap; gap: 8px; }
+body[data-layout] .top .tabs { order: 1; flex: 1 1 auto; flex-basis: auto; flex-wrap: nowrap; gap: 4px; min-width: 0; }
+body[data-layout] .tabs a { min-height: 36px; padding: 4px 9px; font-size: 12px; white-space: nowrap; }
+body[data-layout] .top .bell { order: 2; width: 38px; height: 38px; min-height: 38px; }
+body[data-layout] .bell-dot { top: 5px; right: 6px; }
+.scr { padding: 10px; gap: 6px; }
+.scr-body { gap: 6px; }
+/* 切りかえの中身は、どれを開いても同じ高さ(できあがりの大きさが変わらないように) */
+[data-layout="A"] .scr-panel, [data-layout="C"] .scr-panel { height: clamp(140px, 25dvh, 220px); max-height: none; align-content: start; }
+/* ことば:状況は横1列(横にすべらせる)、ひとことはすぐ下に */
+.scr-panel #phraseField > span { font-size: 12px; }
+.scr-panel #catChips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+.scr-panel #catChips label { flex: none; min-height: 36px; padding: 4px 14px; }
+.scr-panel .chips.words { margin-top: 4px; }
+.scr-panel .chips.words label { padding: 8px 12px; font-size: 14px; }
+/* 作業時間は、できあがりの左上に小さく出す */
+.scr-body > .stage { position: relative; }
+.stage > .timer { position: absolute; left: 8px; top: 6px; margin: 0; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface); opacity: .9; }
+/* 下:「うまく保存できないとき」「新しい投稿を作る」は小さな文字のボタンに */
+.scr-bottom #extraRow button { background: none; border-color: transparent; text-decoration: underline; min-height: 32px; padding: 2px 6px; }
+.scr-panel #phraseField > span { display: none; }
+.scr-panel #phraseField { gap: 4px; }
+.scr-panel .chips.words { gap: 4px; }
+.scr-panel .chips.words label { padding: 6px 10px; font-size: 13px; line-height: 1.4; min-height: 36px; }
+.tabbar .tab { min-height: 36px; }
+.kinds.compact, .scr-panel #catChips { scrollbar-width: none; }
+.kinds.compact::-webkit-scrollbar, .scr-panel #catChips::-webkit-scrollbar { display: none; }
