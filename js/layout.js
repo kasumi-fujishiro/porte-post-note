@@ -76,7 +76,8 @@ export function applyLayout(name, api) {
     const bar = el('div', 'tabbar'); bar.setAttribute('role', 'tablist');
     const panel = el('div', 'scr-panel');
     function showTab(name) {
-      tab = name; panel.textContent = '';
+      // 前の切りかえの部品は、置き場に戻す(ページから外すと、できあがりを描くときに部品が見つからなくなる)
+      tab = name; [...panel.children].forEach(c => store.append(c));
       tabs.find(t => t[0] === name)[1].forEach(id => panel.append(parts[id]));
       if (k === 'park') panel.append(parts['fs-park']);
       [...bar.children].forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));

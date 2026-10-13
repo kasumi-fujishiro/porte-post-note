@@ -1,13 +1,13 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=14';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=14';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=14';
-import { chooseLayout, applyLayout } from './layout.js?v=14';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=14';
-import { monthInfo, noticeFor } from './calendar.js?v=14';
-import { CONFIG } from '../config.js?v=14';
-import { ls, photoStore } from './store.js?v=14';
-import { draw } from './draw.js?v=14';
+import { FORMATS, KINDS } from './data.js?v=15';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=15';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=15';
+import { chooseLayout, applyLayout } from './layout.js?v=15';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=15';
+import { monthInfo, noticeFor } from './calendar.js?v=15';
+import { CONFIG } from '../config.js?v=15';
+import { ls, photoStore } from './store.js?v=15';
+import { draw } from './draw.js?v=15';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -229,7 +229,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=14';
+parkImg.src = 'images/parking.jpg?v=15';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
