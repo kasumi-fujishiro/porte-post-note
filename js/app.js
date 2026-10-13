@@ -1,13 +1,13 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=17';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=17';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=17';
-import { chooseLayout, applyLayout } from './layout.js?v=17';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=17';
-import { monthInfo, noticeFor } from './calendar.js?v=17';
-import { CONFIG } from '../config.js?v=17';
-import { ls, photoStore } from './store.js?v=17';
-import { draw } from './draw.js?v=17';
+import { FORMATS, KINDS } from './data.js?v=18';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=18';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=18';
+import { chooseLayout, applyLayout } from './layout.js?v=18';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=18';
+import { monthInfo, noticeFor } from './calendar.js?v=18';
+import { CONFIG } from '../config.js?v=18';
+import { ls, photoStore } from './store.js?v=18';
+import { draw, cropAxis } from './draw.js?v=18';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -249,7 +249,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=17';
+parkImg.src = 'images/parking.jpg?v=18';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
@@ -279,6 +279,7 @@ async function ensureFonts(s) {
 let raf = 0, version = 0;
 function render() {
   if ($('#tab-make').hidden) return;
+  paintPhotoPos();
   const s = drawState();
   draw(cv, FORMATS[radio('fmt')], s);
   prepareFile();
@@ -357,7 +358,17 @@ function syncKind() {
   const k = radio('kind');
   ['open', 'new', 'park', 'cal'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
   $('#photoBox').hidden = k === 'park' || k === 'cal';
-  $('#photoPosWrap').hidden = !photo;
+  paintPhotoPos();
+}
+// 写真の位置のバー:写真が切れる向き(左右か上下)に合わせて出す。どこも切れないときは出さない
+let lastAxis = '';
+function paintPhotoPos() {
+  const k = radio('kind'), f = FORMATS[radio('fmt')];
+  const axis = (k === 'open' || k === 'new') && f ? cropAxis(photo, f.w, f.h) : '';
+  if (axis && lastAxis && axis !== lastAxis) $('#photoPos').value = 50; // 向きが変わったら、まん中から
+  if (axis) lastAxis = axis;
+  $('#photoPosWrap').hidden = !axis;
+  $('#photoPosWrap label').textContent = axis === 'x' ? '写真の左右の位置' : '写真の上下の位置';
 }
 function showTab() {
   const t = ['make', 'shop'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'make';

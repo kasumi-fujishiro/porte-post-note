@@ -1,7 +1,7 @@
 // 画像を描く処理(試作版の drawOpen / drawNew / drawPark / drawCal / brush / ink / block を整理したもの)。
 // 画面の部品には触らず、渡された内容 s だけを見て描く。
-import { THEMES, SEASONS } from './data.js?v=17';
-import { WEEK, layout } from './text.js?v=17';
+import { THEMES, SEASONS } from './data.js?v=18';
+import { WEEK, layout } from './text.js?v=18';
 
 export const F_TITLE = '"Potta One","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
 export const F_HAND = '"Yusei Magic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
@@ -286,6 +286,13 @@ function seasonal(c, W, H, u, season) {
 }
 
 // 写真を画像いっぱいに敷く。pos(0〜100)で上下の位置を決める
+// 写真を枠いっぱいに入れたとき、はみ出して切れる向き。'x':左右 / 'y':上下 / '':ほとんど切れない
+export function cropAxis(photo, W, H) {
+  if (!photo) return '';
+  const r = ((photo.naturalWidth || photo.width) / (photo.naturalHeight || photo.height)) / (W / H);
+  return r > 1.02 ? 'x' : r < 0.98 ? 'y' : '';
+}
+// 写真を枠いっぱいに入れる。pos(0〜100)で、切れる向きのどこを見せるかを決める
 function cover(c, W, H, photo, pos) {
   if (!photo) {
     const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#CDB9A6'); g.addColorStop(1, '#8F7968');
@@ -294,7 +301,8 @@ function cover(c, W, H, photo, pos) {
     return;
   }
   const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height, sc = Math.max(W / iw, H / ih), sw = W / sc, sh = H / sc;
-  c.drawImage(photo, (iw - sw) / 2, (ih - sh) * (pos / 100), sw, sh, 0, 0, W, H);
+  const axis = cropAxis(photo, W, H), p = pos / 100;
+  c.drawImage(photo, (iw - sw) * (axis === 'x' ? p : 0.5), (ih - sh) * (axis === 'y' ? p : 0.5), sw, sh, 0, 0, W, H);
 }
 // 写真の上下に、うすい影のグラデーション
 function scrim(c, W, H, top, bottom) {
