@@ -27,6 +27,22 @@
   .calstate.ok { background: var(--ok-bg, #DDEEDF); }
   .stage { padding: 8px; }
   .stage canvas { max-height: 56vh; }
+  /* メニュー:最初の画面。押すと、その画面だけに切りかわる */
+  .menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .menu button { display: grid; align-content: center; justify-items: start; gap: 4px; text-align: left; min-height: 92px; padding: 12px 14px; border-radius: 14px; }
+  .menu button b { font-size: 17px; }
+  .menu button small { font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.5; }
+  .menu button small.attn { color: var(--warn-ink); }
+  .menu button:has(small.attn) { border-color: var(--warn-ink); background: var(--warn-bg); }
+  .subhead { margin-bottom: 8px; }
+  /* メニューの先の画面では、戻るボタンを「← メニュー」1つにする */
+  body:not([data-tab="menu"]) .admin-top .back { display: none; }
+  /* ボタンが多いときは、文の下にボタンを回す(文が1文字ずつ縦に並ばないように) */
+  .item { flex-wrap: wrap; }
+  .item > div:first-child { flex: 1 1 180px; }
+  .item .acts { flex-shrink: 1; max-width: 100%; justify-content: flex-start; }
+  body:not([data-tab="menu"]) #notice { display: none; }
+  body:not([data-tab="menu"]):not([data-tab="recent"]) #autoAlert { display: none; }
 </style>
 </head>
 <body>
@@ -52,12 +68,20 @@
 
   <div id="main" hidden>
     <p class="warn" id="readonlyNote" hidden>このアカウントは、シートを見ることはできますが、編集はできません。登録するには、持ち主に「編集者」として共有してもらってください。</p>
-    <nav class="tabs" aria-label="登録の画面の切りかえ" style="margin-bottom:14px">
-      <a href="#phrases" data-tab="phrases">ひとこと</a><a href="#products" data-tab="products">商品</a><a href="#calendar" data-tab="calendar">カレンダー</a><a href="#settings" data-tab="settings">お店の設定</a><a href="#logs" data-tab="logs">作業時間</a><a href="#more" data-tab="more">そのほか</a>
+    <!-- ===== メニュー ===== -->
+    <nav class="menu" id="tab-menu" aria-label="メニュー">
+      <button type="button" data-go="phrases"><b>ひとこと</b><small id="m-phrases"></small></button>
+      <button type="button" data-go="products"><b>商品</b><small id="m-products"></small></button>
+      <button type="button" data-go="calendar"><b>営業カレンダー</b><small id="m-calendar"></small></button>
+      <button type="button" data-go="recent"><b>最近の投稿</b><small id="m-recent"></small></button>
+      <button type="button" data-go="settings"><b>お店の設定</b><small id="m-settings"></small></button>
+      <button type="button" data-go="logs"><b>作業時間</b><small id="m-logs"></small></button>
+      <button type="button" data-go="more"><b>そのほか</b><small id="m-more"></small></button>
     </nav>
+    <div class="subhead" id="subHead" hidden><button type="button" class="back" data-go="menu">← メニュー</button></div>
 
     <!-- ===== ひとこと ===== -->
-    <section class="stack" id="tab-phrases">
+    <section class="stack" id="tab-phrases" hidden>
       <h2>ひとこと集</h2>
       <p class="hint">営業中のストーリーズに入れる一言です。ここに登録したものだけが、アプリでえらべます。</p>
       <div id="phraseList"></div>
@@ -129,13 +153,15 @@
         <div class="row"><button type="button" id="c-download">画像を保存する</button><button type="button" class="small" id="c-showimg">うまく保存できないとき</button></div>
         <img id="c-img" alt="保存用の画像" hidden style="max-width:100%;border-radius:6px">
       </div>
-      <div class="box stack">
-        <h3 style="margin:0">最近の投稿</h3>
-        <p class="hint">「要確認」は、投稿できたか分からないものです。Instagramを見て、出ていれば「投稿済みにする」、出ていなければ「もう一度出す」を押してください。手で投稿したなど、自動で出さなくてよいときは「取り消す」(2回押す)。</p>
-        <div class="list" id="recent"></div>
-      </div>
       <div class="row"><button type="button" class="small" id="noticeTest">お知らせの表示を試す</button>
         <span class="seg" id="simModes" role="radiogroup" aria-label="試す日" hidden><label><input type="radio" name="sim" value="due" checked>知らせる時期</label><label><input type="radio" name="sim" value="late">投稿する日を過ぎた</label></span></div>
+    </section>
+
+    <!-- ===== 最近の投稿 ===== -->
+    <section class="stack" id="tab-recent" hidden>
+      <h2>最近の投稿</h2>
+      <p class="hint">「要確認」は、投稿できたか分からないものです。Instagramを見て、出ていれば「投稿済みにする」、出ていなければ「もう一度出す」を押してください。手で投稿したなど、自動で出さなくてよいときは「取り消す」(2回押す)。</p>
+      <div class="list" id="recent"></div>
     </section>
 
     <!-- ===== お店の設定 ===== -->
@@ -159,7 +185,7 @@
       </div>
       <div class="field"><label for="s-layout">スタッフの画面の形(全員のアプリが、この形になります)</label>
         <select id="s-layout"><option value="L">今の形(下にスクロールする)</option><option value="S">1画面ずつ順に進む</option><option value="A">できあがり中心(1画面)</option><option value="C">よく使う組み合わせ</option></select>
-        <span class="hint">形ごとの作業時間は「作業時間」のタブで比べられます。1台だけ試すときは、アプリのURLの後ろに ?layout=a のようにつけて開きます(?layout=auto で戻ります)。</span></div>
+        <span class="hint">形ごとの作業時間はメニューの「作業時間」で比べられます。1台だけ試すときは、アプリのURLの後ろに ?layout=a のようにつけて開きます(?layout=auto で戻ります)。</span></div>
       <div class="field"><span id="l-quick">「よく使う組み合わせ」の形で、最初に並べるひとこと(4つまで)</span>
         <div class="checks" id="s-quick" role="group" aria-labelledby="l-quick"></div></div>
       <div class="row"><button type="button" class="primary needs-edit" id="s-save">設定を保存する</button></div>
@@ -232,7 +258,7 @@ const { CONFIG } = await import(APP + 'config.js?v=14');
     $('#main').hidden = false;
     document.body.classList.toggle('readonly', !S.canEdit); $('#readonlyNote').hidden = S.canEdit;
     $('#me').textContent = S.me; $('#sheetLink').href = S.sheetUrl;
-    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems(); paintMonths(); loadMonth(); updateNotice(); paintRecent();
+    paintPhrases(); paintProducts(); paintSettings(); paintLogs(); paintProblems(); paintMonths(); loadMonth(); updateNotice(); paintRecent(); paintMenu();
   }
   const exTag = x => (x.ex ? ' <span class="tagex">例</span>' : '');
   const hideBtn = (kind, id, hidden) => `<button type="button" class="small needs-edit" data-hide="${kind}" data-id="${id}" data-to="${hidden ? '0' : '1'}">${hidden ? '戻す' : 'しまう'}</button>`;
@@ -517,13 +543,37 @@ const { CONFIG } = await import(APP + 'config.js?v=14');
   $('#simModes').addEventListener('change', () => { say(''); updateNotice(); });
 
   // ---------- 画面の切りかえ ----------
-  const TABS = ['phrases', 'products', 'calendar', 'settings', 'logs', 'more'];
+  const TABS = ['menu', 'phrases', 'products', 'calendar', 'recent', 'settings', 'logs', 'more'];
   function showTab(t) {
-    TABS.forEach(n => { $('#tab-' + n).hidden = n !== t; const a = document.querySelector(`[data-tab="${n}"]`); if (n === t) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    if (!TABS.includes(t)) t = 'menu';
+    TABS.forEach(n => { $('#tab-' + n).hidden = n !== t; });
+    $('#subHead').hidden = t === 'menu'; document.body.dataset.tab = t;
+    if (t === 'menu') paintMenu();
+    window.scrollTo(0, 0);
   }
-  document.querySelector('.tabs').addEventListener('click', e => { const a = e.target.closest('a[data-tab]'); if (!a) return; e.preventDefault(); showTab(a.dataset.tab); say(''); });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return; e.preventDefault(); showTab(b.dataset.go); say(''); });
 
-  aiPhrase(); aiProduct(); resetPhraseForm(); resetProductForm(); showTab(START_TAB || 'phrases');
+  // メニューの各項目に、今の様子を短く出す(確かめてほしいものは色を変える)
+  const LAYOUT_NAMES = { L: '今の形', S: '1画面ずつ', A: 'できあがり中心', C: 'よく使う組み合わせ' };
+  function paintMenu() {
+    if (!S) return;
+    const put = (id, text, attn) => { const e = $('#m-' + id); e.textContent = text; e.classList.toggle('attn', !!attn); };
+    put('phrases', `${S.phrases.filter(p => !p.hidden).length}件`);
+    put('products', `${S.products.filter(p => !p.hidden).length}件`);
+    const n = CAL.noticeFor(today, S.schedule, S.calendarState, S.firstUse);
+    // 知らせの時期でないときは、来月の分の様子を出す
+    const next = new Date(today.getFullYear(), today.getMonth() + 1, 1), nk = keyOf(next.getFullYear(), next.getMonth() + 1);
+    const CAL_WORD = { confirmed: '確認ずみ', posted: '投稿ずみ' };
+    put('calendar', n.state === 'due' || n.state === 'late' ? `${n.tm}月の営業日を確認してください` : n.state === 'ok' ? `${n.tm}月は確認ずみ` : `${next.getMonth() + 1}月:${CAL_WORD[(S.calendarState || {})[nk]] || 'まだ確認していません'}`, n.state === 'due' || n.state === 'late');
+    const bad = (S.recent || []).filter(r => r.month !== 'TEST' && (r.state === '要確認' || r.state === '失敗'));
+    const last = (S.recent || []).find(r => r.month !== 'TEST');
+    put('recent', bad.length ? `確かめてほしいものが${bad.length}件あります` : last ? `${+last.month.slice(5)}月の分:${STATE_HINT[last.state] || last.state}` : 'まだありません', bad.length);
+    put('settings', `画面の形:${LAYOUT_NAMES[(S.settings || {}).layout] || '今の形'}`);
+    put('logs', S.logs.count ? `${S.logs.count}回・平均${S.logs.avg}秒` : 'まだ記録がありません');
+    put('more', S.problems.length ? `直してほしい行が${S.problems.length}件あります` : '登録できる人など', S.problems.length);
+  }
+
+  aiPhrase(); aiProduct(); resetPhraseForm(); resetProductForm(); showTab(START_TAB || 'menu');
   const isNoAccess = e => /permission|権限|access|アクセス/i.test(String((e && e.message) || e));
   async function noAccess() {
     $('#loading').hidden = true; $('#noaccess').hidden = false;

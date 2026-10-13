@@ -7,7 +7,7 @@ function doGet(e) {
   t.appUrl = appUrl_();
   // アプリのお知らせの「確認する」から開いたときは、カレンダーのその月を直接開く
   const p = (e && e.parameter) || {};
-  t.startTab = ['phrases', 'products', 'settings', 'calendar', 'logs', 'more'].includes(p.tab) ? p.tab : 'phrases';
+  t.startTab = ['menu', 'phrases', 'products', 'settings', 'calendar', 'recent', 'logs', 'more'].includes(p.tab) ? p.tab : 'menu';
   t.startMonth = /^\d{4}-\d{2}$/.test(p.month || '') ? p.month : '';
   return t.evaluate()
     .setTitle('投稿ノート 登録・確認')
