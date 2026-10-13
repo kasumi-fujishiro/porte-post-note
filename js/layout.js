@@ -29,7 +29,7 @@ const FINISH = {
   cal: [['月', ['fs-cal']]]
 };
 const NEEDS_PHOTO = k => k === 'open' || k === 'new';
-const NOTICES = ['inapp', 'autoAlert', 'share', 'notice'];
+const NOTICES = ['inapp']; // ほかのお知らせは、右上のベルの中
 
 // api: { kind(), setKind(k), quickItems(), setPhrase(id), cameraMode(), setCameraMode(m) }
 export function applyLayout(name, api) {

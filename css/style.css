@@ -192,3 +192,21 @@ body[data-layout] .tabs a { min-height: 36px; padding: 4px 12px; font-size: 13px
 .scr-body > .stage { min-height: 120px; }
 [data-layout="A"] .scr-panel, [data-layout="C"] .scr-panel { max-height: 24dvh; }
 .scr-panel .chips { gap: 6px; }
+
+/* お知らせのベル(右上)と、押すと開く一覧 */
+.top h1 { margin-right: auto; }
+.bell { position: relative; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: inline-grid; place-items: center; flex: none; }
+.bell-dot { position: absolute; top: 7px; right: 8px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); }
+.bell-back { position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 40; }
+.bell-panel { position: fixed; top: 12px; left: 12px; right: 12px; max-width: 560px; margin: 0 auto; max-height: calc(100dvh - 24px); overflow-y: auto; z-index: 41; background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.2); display: grid; gap: 10px; }
+.bell-panel[hidden], .bell-back[hidden] { display: none; }
+.bell-head { display: flex; align-items: center; justify-content: space-between; }
+.bell-head h2 { margin: 0; font-size: 18px; }
+.bell-panel .notice, .bell-panel .warn { margin: 0; }
+/* 右上に置く(スマホでは題の横、広い画面では切りかえのボタンの右) */
+.top .bell { order: 2; }
+@media (max-width: 699px) {
+  .top .tabs { order: 3; flex-basis: 100%; }
+}
+/* 共有のボタンは1行に収める */
+.scr-bottom #actions button { white-space: nowrap; font-size: clamp(13px, 3.8vw, 16px); }

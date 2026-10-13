@@ -12,13 +12,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=15">
-<script type="module" src="js/app.js?v=15"></script>
+<link rel="stylesheet" href="css/style.css?v=16">
+<script type="module" src="js/app.js?v=16"></script>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <h1>投稿ノート</h1>
+    <button type="button" class="bell" id="bellBtn" aria-label="お知らせ" aria-expanded="false" aria-controls="bellPanel">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6v3.6L4.3 15.4A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.6L18 12.6V9a6 6 0 0 0-6-6Zm-2.2 15.5a2.3 2.3 0 0 0 4.4 0Z" fill="currentColor"/></svg>
+      <span class="bell-dot" id="bellDot" hidden></span>
+    </button>
     <nav class="tabs" aria-label="画面の切りかえ">
       <a href="#make" id="nav-make">つくる</a><a href="#shop" id="nav-shop">登録・確認(お店の人用)</a><a href="manual.html">使い方</a>
     </nav>
@@ -29,6 +33,11 @@
     右上(または右下)の「…」から「ブラウザで開く」をえらんで、SafariかChromeで開いてください。
   </div>
 
+  <!-- お知らせ:右上のベルを押したときだけ開く。新しいものがあると、ベルに赤い点がつく -->
+  <div class="bell-back" id="bellBack" hidden></div>
+  <section class="bell-panel" id="bellPanel" aria-labelledby="h-bell" hidden>
+    <div class="bell-head"><h2 id="h-bell">お知らせ</h2><button type="button" class="small" id="bellClose" aria-label="お知らせを閉じる">×</button></div>
+    <p class="hint" id="bellEmpty">お知らせはありません。</p>
   <p class="warn" id="autoAlert" role="status" hidden></p>
 
   <div class="notice share" id="share" role="status" hidden>
@@ -41,6 +50,7 @@
     <p id="noticeText"></p>
     <div class="row"><button type="button" class="primary" id="noticeGo">営業日を確認する(お店の人用)</button></div>
   </div>
+  </section>
 
   <!-- ===== つくる ===== -->
   <main class="grid" id="tab-make">

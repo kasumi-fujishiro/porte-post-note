@@ -1,13 +1,13 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=15';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=15';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=15';
-import { chooseLayout, applyLayout } from './layout.js?v=15';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=15';
-import { monthInfo, noticeFor } from './calendar.js?v=15';
-import { CONFIG } from '../config.js?v=15';
-import { ls, photoStore } from './store.js?v=15';
-import { draw } from './draw.js?v=15';
+import { FORMATS, KINDS } from './data.js?v=16';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=16';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=16';
+import { chooseLayout, applyLayout } from './layout.js?v=16';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=16';
+import { monthInfo, noticeFor } from './calendar.js?v=16';
+import { CONFIG } from '../config.js?v=16';
+import { ls, photoStore } from './store.js?v=16';
+import { draw } from './draw.js?v=16';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -211,7 +211,7 @@ function paintShare() {
 }
 $('#shareDone').addEventListener('click', () => {
   if (!data.share) return;
-  ls.set('pn-shared', [data.share.id, ...ls.get('pn-shared', [])].slice(0, 20)); paintShare();
+  ls.set('pn-shared', [data.share.id, ...ls.get('pn-shared', [])].slice(0, 20)); paintShare(); paintBell();
 });
 
 // 自動投稿がうまくいかなかったとき、または自動実行が2日以上動いていないときに出す
@@ -222,6 +222,26 @@ function paintAuto() {
   const msg = a.alert ? a.alert.message : stale ? `営業カレンダーを自動で投稿するしくみが、2日以上動いていません(最後に動いたのは ${a.lastOkAt.slice(5, 16)})。お店の人に知らせてください。` : '';
   el.hidden = !msg; el.textContent = msg;
 }
+// ---------- お知らせのベル ----------
+// 出ているお知らせのうち、まだベルを開いて見ていないものがあれば、赤い点をつける(見たかどうかは、スマホごと)
+const BELL_ITEMS = ['#autoAlert', '#share', '#notice'];
+const bellKeys = () => BELL_ITEMS.map(sel => $(sel)).filter(el => !el.hidden).map(el => `${el.id}:${el.textContent.replace(/\s+/g, ' ').trim().slice(0, 80)}`);
+function paintBell() {
+  const keys = bellKeys(), seen = ls.get('pn-bell-seen', []);
+  $('#bellDot').hidden = !keys.some(k => !seen.includes(k));
+  $('#bellEmpty').hidden = keys.length > 0;
+  $('#bellBtn').setAttribute('aria-label', keys.length ? `お知らせ(${keys.length}件)` : 'お知らせ');
+}
+function openBell(open) {
+  $('#bellPanel').hidden = $('#bellBack').hidden = !open;
+  $('#bellBtn').setAttribute('aria-expanded', String(open));
+  if (open) { ls.set('pn-bell-seen', bellKeys().slice(0, 20)); paintBell(); $('#bellClose').focus(); }
+}
+$('#bellBtn').addEventListener('click', () => openBell($('#bellPanel').hidden));
+$('#bellClose').addEventListener('click', () => openBell(false));
+$('#bellBack').addEventListener('click', () => openBell(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#bellPanel').hidden) openBell(false); });
+
 $('#noticeGo').addEventListener('click', () => { if (CONFIG.adminUrl) location.href = `${CONFIG.adminUrl}?tab=calendar&month=${$('#notice').dataset.key}`; });
 
 // ---------- 画像を描く ----------
@@ -229,7 +249,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=15';
+parkImg.src = 'images/parking.jpg?v=16';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
@@ -375,7 +395,7 @@ async function refreshFeed() {
   const [f, state] = await fetchFeed(data);
   // お店の設定で画面の形が変わっていたら、まだ作りはじめていなければ、読み込み直して新しい形にする
   if (f && chooseLayout(f.settings.layout) !== layout && !t0) { location.reload(); return; }
-  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); saveDraft(); changed(); }
+  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); paintBell(); saveDraft(); changed(); }
   paintFeedInfo(state);
 }
 addEventListener('online', () => { flushLogs().then(() => paintFeedInfo()); refreshFeed(); });
@@ -384,7 +404,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 // 電波がないときのために、画面のファイルを端末に保存する
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); paintLog(); paintFeedInfo();
+paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); paintBell(); paintLog(); paintFeedInfo();
 
 // ---------- 画面の形(L:今の形 S:1画面ずつ A:できあがり中心 C:よく使う組み合わせ) ----------
 const layout = chooseLayout(data.settings.layout);
