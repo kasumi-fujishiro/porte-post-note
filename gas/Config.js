@@ -1,7 +1,7 @@
 // 設定欄(スクリプトプロパティ)を読む。秘密の値は、ログに出さない。
 
 // 秘密の情報。値はGASのエディタの「プロジェクトの設定」から、持ち主が手で入れる
-const SECRET_KEYS = ['META_PAGE_TOKEN', 'GITHUB_TOKEN', 'LINE_CHANNEL_TOKEN'];
+const SECRET_KEYS = ['META_PAGE_TOKEN', 'GITHUB_TOKEN', 'LINE_CHANNEL_TOKEN', 'SHOP_PASSCODE', 'PARTNER_FEED_KEY'];
 
 function prop_(key, required) {
   const v = PropertiesService.getScriptProperties().getProperty(key);

@@ -33,6 +33,10 @@ erDiagram
         bool hidden
         bool ex
         string updatedAt
+        string source "partner=予約サイトから写したもの / 空=投稿ノートで登録"
+        string imageUrl "予約サイトの商品写真のURL(配信データには出さない)"
+        string category "cake / whole / yakigashi"
+        string newPost "新作の投稿:待ち / 予約ずみ / しない"
     }
     CALENDARS {
         string month PK "yyyy-MM"
@@ -262,6 +266,9 @@ GET {feedUrl}?api=feed
 | `calendarState` | 月ごとの状態:`unconfirmed`(確認前)/ `confirmed`(確認済み)/ `posted`(投稿済み)。確認前の中身は配らない |
 | `auto.lastOkAt` | 毎日の自動実行が最後に正しく動いた日時。2日以上前なら止まっている |
 | `auto.alert` | 知らせ(なければ null)。`kind`:`check`(要確認)/ `failed`(失敗)/ `token`(トークンが使えない)/ `account`(Instagramのアカウントが止められている)と `message` |
+| `newPending` | 予約サイトで登録された新作で、まだ投稿していないもの(`id`、`name`)。スタッフの画面のベルに出す |
+| `calPending` | 予約サイトで確認された営業カレンダーで、画像がまだないもの(`month`、`postTo`)。合言葉を覚えたスタッフの画面が、開いたときに描いて送る |
+| `products[].photo` | お店の写真(予約サイトの商品写真)があるか。写真は `?api=photo&id=商品ID` で受けとる |
 | `share` | 2日以内にフィードに投稿した営業カレンダーか新作(なければ null)。スタッフの画面のベルに「ストーリーズでもシェアしましょう」と出す |
 
 配らないもの:作業時間の記録、動作記録、予約の詳しい中身、確認した人、登録できる人の名簿。
@@ -292,7 +299,15 @@ Content-Type: text/plain
 {"type":"calendarImage","resId":"予約ID","ticket":"合言葉","image":"JPEGのbase64"}
 ```
 
-新作の画像は `"type":"postImage"` で送ります(中身は同じ)。合言葉は、管理ページで「この内容でOK」(カレンダー)か、写真つきで商品を「登録する」(新作)を押したときに予約の行に書かれ、1回使うと消えます。大きさとSHA-256が予約の記録と合うときだけ受けつけます。ほかのアプリから使う窓口ではありません。
+新作の画像は `"type":"postImage"` で送ります(中身は同じ)。
+
+スタッフの画面からは、お店の合言葉(`SHOP_PASSCODE`)つきで、次の3つを送ります。合言葉は15分に10回まちがえると止まります。
+
+| type | 中身 | すること |
+|---|---|---|
+| `passcode` | `passcode` | 合言葉が合っているかだけ答える |
+| `staffNewPost` | `productId`、`passcode`、`image`(JPEGのbase64) | 「待ち」の新作の投稿を予約する。投稿の文はサーバーが商品から作る |
+| `staffCalImage` | `month`、`passcode`、`image` | 画像がまだない営業カレンダーの予約に、画像を入れる |合言葉は、管理ページで「この内容でOK」(カレンダー)か、写真つきで商品を「登録する」(新作)を押したときに予約の行に書かれ、1回使うと消えます。大きさとSHA-256が予約の記録と合うときだけ受けつけます。ほかのアプリから使う窓口ではありません。
 
 ---
 

@@ -52,7 +52,7 @@ function state_(me) {
   return {
     me, canEdit, version: feed.version, appUrl: appUrl_(), sheetUrl: book.getUrl(),
     phrases: tables.phrases.filter(r => r.id).map(r => pick(r, ['id', 'cat', 'text', 'order'])),
-    products: tables.products.filter(r => r.id).map(r => pick(r, ['id', 'name', 'desc', 'color', 'order'])),
+    products: tables.products.filter(r => r.id).map(r => Object.assign(pick(r, ['id', 'name', 'desc', 'color', 'order', 'source', 'category', 'newPost']), { photo: !!r.imageUrl })),
     settings, problems, logs: logSummary(readTable_('logs'), 200),
     calendars: tables.calendars.filter(r => /^\d{4}-\d{2}$/.test(r.month || '')).map(r => ({
       month: r.month, days: parseDays(r.days || '', r.month) || {}, note: r.note || '', state: r.state || '未確認', confirmedAt: r.confirmedAt || '', confirmedBy: r.confirmedBy || ''
@@ -149,12 +149,27 @@ function saveProduct(input, post, baseVersion) {
       createdAt: now, updatedAt: now, ticket
     }]);
     made = { resId, ticket };
-    const today = now.slice(0, 10), within = slot.postDate === today && slot.postHour === +now.slice(11, 13);
-    const when = within && !post.slot ? '1時間以内' : slot.postDate === today ? `今日の${slot.postHour}時台` : slot.postDate === nextDay(today) ? `明日の${slot.postHour}時台` : `${+slot.postDate.slice(5, 7)}月${+slot.postDate.slice(8)}日の${slot.postHour}時台`;
+    const when = slotWords(slot, now, !!post.slot);
     return { message: `${done}${when}に、Instagramのフィードに新作として投稿します。やめるときは、メニューの「最近の投稿」で取り消せます。` };
   });
   if (r.ok && made) Object.assign(r, made);
   return r;
+}
+
+// 予約サイトから写した商品の色を変える(商品名や説明は、予約サイトで直す)
+function setProductColor(id, color, baseVersion) {
+  if (!COLORS.includes(color)) return { error: '色をえらんでください。' };
+  return mutate_(baseVersion, () => { setCells_('products', findRow_('products', id), { color, updatedAt: nowText_() }); return { message: '色を変えました。' }; });
+}
+
+// 予約サイトの新作を、Instagramに投稿しないことにする
+function skipNewPost(id, baseVersion) {
+  return mutate_(baseVersion, () => {
+    const r = readTable_('products').find(x => x.id === id);
+    if (!r || r.newPost !== NEW_WAIT) return { error: 'この商品は、投稿を待っていません。読み直してください。' };
+    setCells_('products', r.row, { newPost: NEW_SKIP, updatedAt: nowText_() });
+    return { message: `「${r.name}」は投稿しないことにしました。スタッフの画面のお知らせからも消えます。` };
+  });
 }
 
 // しまう(hidden: true)/戻す(hidden: false)。消さずに印をつけるだけ

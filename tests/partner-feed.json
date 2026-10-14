@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-14T18:30:00+09:00",
+  "_note": "試し用の窓口。ポルテ予約サイトの「読むだけの窓口」の代わり(中身は作り話です)。testPartnerMock で読みます",
+  "products": [
+    { "id": "test-tart", "category": "cake", "name": "試し:季節のタルト", "description": "試しの説明文です", "imageUrl": "https://kasumi-fujishiro.github.io/porte-post-note/tests/assets/mock-tart.jpg", "sort": 1 },
+    { "id": "test-choco", "category": "cake", "name": "試し:ショコラ", "description": "試しの説明文です", "imageUrl": "https://kasumi-fujishiro.github.io/porte-post-note/tests/assets/mock-choco.jpg", "sort": 2 },
+    { "id": "test-cookie", "category": "yakigashi", "name": "試し:クッキー", "description": "", "imageUrl": "https://kasumi-fujishiro.github.io/porte-post-note/tests/assets/mock-cookie.jpg", "sort": 3 }
+  ],
+  "shop": { "regularHolidays": [3, 4], "hours": "" },
+  "closedDays": [ { "date": "2026-12-31", "note": "年末のお休み(試し)" } ],
+  "calendarConfirmations": []
+}

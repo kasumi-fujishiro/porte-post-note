@@ -4,16 +4,21 @@
 function doGet(e) {
   const api = e && e.parameter && e.parameter.api;
   if (api === 'feed') return json_(feedData_());
+  if (api === 'photo') return json_(partnerPhoto_(e.parameter.id)); // 予約サイトの商品写真(スタッフの画面へ)
   return ContentService.createTextOutput('投稿ノートの公開窓口です。');
 }
 
 function doPost(e) {
   const body = e && e.postData ? e.postData.contents : '';
-  // 管理ページからの、投稿する画像(営業カレンダー・新作。使い捨ての合言葉つき)
-  if (body.indexOf('"type":"calendarImage"') >= 0 || body.indexOf('"type":"postImage"') >= 0) {
+  // 種類つきの送り物:管理ページからの投稿する画像(使い捨ての合言葉つき)と、スタッフの画面からの投稿(お店の合言葉つき)
+  if (body.indexOf('"type":"') >= 0) {
     let data = null;
     try { data = JSON.parse(body); } catch (err) { data = null; }
-    if (data && (data.type === 'calendarImage' || data.type === 'postImage')) return json_(receiveCalendarImage_(data));
+    const type = data && data.type;
+    if (type === 'calendarImage' || type === 'postImage') return json_(receiveCalendarImage_(data));
+    if (type === 'passcode') return json_(checkPasscode_(data.passcode));
+    if (type === 'staffNewPost') return json_(staffNewPost_(data));
+    if (type === 'staffCalImage') return json_(staffCalImage_(data));
   }
   return json_(appendLogs_(body));
 }
@@ -68,7 +73,7 @@ function json_(obj) {
 // 配信データ。版番号が変わるまでは、作ったものを使い回す(シートのほかの表を毎回読まないため)
 // 版番号はシートから読む(管理ページは別のプロジェクトなので、ここの設定欄は書きかえられない)
 // 配信データの形や、知らせの決まりを変えたら、この番号を上げる(保存してある古い形を使わないため)
-const FEED_FORMAT = 4;
+const FEED_FORMAT = 5;
 
 function feedData_() {
   // 版番号と形の番号に加えて、最後に正しく動いた日時と、トークン・アカウントの状態が変わったら作り直す

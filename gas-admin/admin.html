@@ -22,7 +22,7 @@
   .aibox { border: 1.5px dashed var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
   .aibox textarea { min-height: 9em; font-size: 14px; }
   details.box > summary { font-weight: 900; cursor: pointer; min-height: 32px; }
-  .readonly button.needs-edit { display: none; }
+  .readonly button.needs-edit, .readonly select[data-colord] { display: none; }
   .calstate { border-radius: 10px; padding: 10px 12px; background: var(--chip); font-weight: 700; }
   .calstate.ok { background: var(--ok-bg, #DDEEDF); }
   .stage { padding: 8px; }
@@ -106,10 +106,11 @@
     <section class="stack" id="tab-products" hidden>
       <h2>商品メモ</h2>
       <p class="hint">新作や季節の商品を、一度だけ登録します。投稿する人は、商品をえらぶだけで済みます。今は出していない商品は、消さずに「しまう」と、次の季節にまた使えます。</p>
+      <p class="notice" id="productLinked" hidden>商品は<b>予約サイト</b>から自動で写しています(1時間ごと)。商品の登録や直しは、予約サイトで行ってください。ここでは、画像の色だけ変えられます。予約サイトで新作を写真つきで登録すると、スタッフの画面のベルから、Instagramのフィードに投稿できます。</p>
       <div class="list" id="productList"></div>
       <div class="row" id="productSeed" hidden><button type="button" class="needs-edit" data-seed="products">例を入れる</button><span class="hint">仮の商品が3つ入ります。</span></div>
       <details class="box" id="productHiddenBox" hidden><summary>しまったもの</summary><div class="list" id="productHidden"></div></details>
-      <div class="stack box">
+      <div class="stack box" id="productFormBox">
         <h3 id="productFormTitle" style="margin:0">商品を足す</h3>
         <div class="field"><label for="d-name">商品名(30文字まで)</label><input type="text" id="d-name" maxlength="40"></div>
         <div class="field"><label for="d-desc">ひとこと説明(60文字まで。味や特徴)</label><textarea id="d-desc" rows="2" maxlength="80"></textarea><span class="counter" id="d-count"></span></div>
@@ -141,7 +142,7 @@
         </div>
         <div class="row"><button type="button" class="primary needs-edit" id="d-save">登録する</button><button type="button" id="d-cancel" hidden>やめる</button></div>
       </div>
-      <div class="aibox">
+      <div class="aibox" id="productAiBox">
         <h3 style="margin:0">AIに頼む文をコピーする(商品の説明)</h3>
         <p class="hint">上の欄に商品名と短いメモを入れると、説明を整えてもらう文ができます。AIの答えは、メモにないことが足されていないか読んでから使ってください。</p>
         <textarea id="ai-product" readonly aria-label="AIに頼む文"></textarea>
@@ -246,10 +247,10 @@
 
 <script type="module">
 const APP = '<?= appUrl ?>', START_TAB = '<?= startTab ?>', START_MONTH = '<?= startMonth ?>';
-const { draw, cropAxis } = await import(APP + 'js/draw.js?v=19');
-const { FORMATS } = await import(APP + 'js/data.js?v=19');
-const CAL = await import(APP + 'js/calendar.js?v=19');
-const { CONFIG } = await import(APP + 'config.js?v=19');
+const { draw, cropAxis } = await import(APP + 'js/draw.js?v=20');
+const { FORMATS } = await import(APP + 'js/data.js?v=20');
+const CAL = await import(APP + 'js/calendar.js?v=20');
+const { CONFIG } = await import(APP + 'config.js?v=20');
 {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -298,7 +299,13 @@ const { CONFIG } = await import(APP + 'config.js?v=19');
     $('#phraseHidden').innerHTML = hidden.map(p => `<div class="item"><div><b>${esc(p.cat)}</b>:${esc(p.text)}</div><div class="acts">${hideBtn('phrases', p.id, true)}</div></div>`).join('');
     $('#catList').innerHTML = [...new Set(S.phrases.map(p => p.cat))].map(c => `<option value="${esc(c)}">`).join('');
   }
+  // 予約サイトとつないでいるか(予約サイトから写した商品があるか)
+  const partnerMode = () => S.products.some(p => p.source === 'partner');
   function paintProducts() {
+    const linked = partnerMode();
+    $('#productLinked').hidden = !linked;
+    ['#productFormBox', '#productAiBox'].forEach(s => { $(s).hidden = linked; });
+    if (linked) { paintLinkedProducts(); return; }
     const item = (p, hidden) => `<div class="item"><div><b><span class="dot" style="background:${(COLORS[p.color] || COLORS.pink)[1]}"></span>${esc(p.name)}</b>${exTag(p)}<br><span class="hint">${esc(p.desc || '説明なし')}</span></div>
       <div class="acts">${hidden ? '' : `<button type="button" class="small needs-edit" data-editd="${p.id}">直す</button>`}${hideBtn('products', p.id, hidden)}</div></div>`;
     const shown = S.products.filter(p => !p.hidden), hidden = S.products.filter(p => p.hidden);
@@ -307,6 +314,20 @@ const { CONFIG } = await import(APP + 'config.js?v=19');
     $('#productHiddenBox').hidden = !hidden.length;
     $('#productHidden').innerHTML = hidden.map(p => item(p, true)).join('');
   }
+  // 予約サイトとつないでいるとき:商品は予約サイトの写し。色だけ変えられる。新作の投稿の様子を出す
+  const NEW_WORD = { '待ち': 'スタッフの画面で投稿を待っています', '予約ずみ': '投稿を予約しました', 'しない': '投稿しないことにしました' };
+  function paintLinkedProducts() {
+    const mine = S.products.filter(p => p.source === 'partner'), own = S.products.filter(p => p.source !== 'partner');
+    const colorSel = p => `<select data-colord="${p.id}" aria-label="${esc(p.name)}の色" class="needs-edit-sel">${Object.entries(COLORS).map(([k, [n]]) => `<option value="${k}"${k === p.color ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+    const item = p => `<div class="item"><div><b><span class="dot" style="background:${(COLORS[p.color] || COLORS.pink)[1]}"></span>${esc(p.name)}</b>${p.hidden ? ' <span class="tagex">サイトに出ていない</span>' : ''}<br><span class="hint">${esc(p.desc || '説明なし')}${p.photo ? '' : ' / 写真なし'}${p.newPost ? ` / 新作:${esc(NEW_WORD[p.newPost] || p.newPost)}` : ''}</span></div>
+      <div class="acts">${colorSel(p)}${p.newPost === '待ち' ? `<button type="button" class="small needs-edit" data-skipnew="${p.id}">投稿しない</button>` : ''}</div></div>`;
+    $('#productList').innerHTML = mine.filter(p => !p.hidden).map(item).join('') || '<p class="hint">予約サイトに、サイトに出している商品がありません。</p>';
+    $('#productSeed').hidden = true;
+    $('#productHiddenBox').hidden = !own.length && !mine.some(p => p.hidden);
+    $('#productHidden').innerHTML = mine.filter(p => p.hidden).map(item).join('') + own.map(p => `<div class="item"><div><b>${esc(p.name)}</b><br><span class="hint">前に投稿ノートで登録した商品(アプリには出ません)</span></div></div>`).join('');
+  }
+  document.addEventListener('change', e => { const s = e.target.closest('select[data-colord]'); if (s) call('setProductColor', s.dataset.colord, s.value); });
+  document.addEventListener('click', e => { const b = e.target.closest('button[data-skipnew]'); if (b) call('skipNewPost', b.dataset.skipnew); });
   function paintSettings() {
     const st = S.settings;
     $('#s-hours').value = st.hours || ''; $('#s-theme').value = st.theme || 'pink';
@@ -522,6 +543,11 @@ const { CONFIG } = await import(APP + 'config.js?v=19');
       else if (res && res.state === '確認済み') t += `${fmtDate(res.postDate)}の${S.schedule.postHour}時台に、${res.postTo === 'story' ? 'ストーリーズ' : 'フィード'}へ投稿する予約があります。` + (res.publishedAt ? '' : '(画像を公開する準備中)');
       else if (res && res.state) t += `予約の状態:${res.state}。` + (res.lastError ? `(${res.lastError})` : '');
     } else t = row ? 'まだ確認していません(途中まで保存してあります)。' : 'まだ確認していません。';
+    // 予約サイトとつないでいるときは、お休みは予約サイトから写し、確認も予約サイトでする
+    const linked = partnerMode();
+    if (linked) t = '営業カレンダーは、予約サイトの定休日と臨時休業日から自動で作ります。確認は、予約サイトの「休業日」で行ってください。' + (row && row.state === '確認済み' ? `この月は確認ずみです。${res && res.state === '確認済み' ? `${fmtDate(res.postDate)}の${S.schedule.postHour}時台に投稿する予約があります${res.publishedAt ? '' : '(画像は、お店の合言葉を入れたスマホでスタッフの画面を開くと作られます)'}。` : res && res.state ? `予約の状態:${res.state}。` : ''}` : 'この月は、まだ予約サイトで確認されていません。');
+    ['#c-ok', '#c-save', '#c-reset'].forEach(s => { $(s).hidden = linked; });
+    $('#c-note').disabled = linked;
     el.textContent = t; el.classList.toggle('ok', !!(row && row.state === '確認済み' && !cal.dirty));
     $('#c-okhint').textContent = `OKを押すと、${S.postTo === 'story' ? 'ストーリーズ' : 'フィード'}の大きさで画像を作り、投稿の予約をします。`;
   }
@@ -541,7 +567,7 @@ const { CONFIG } = await import(APP + 'config.js?v=19');
   }
   $('#c-month').addEventListener('change', () => { if (cal && cal.dirty && !confirm('保存していない変更があります。月を切りかえると、変更は消えます。よいですか?')) { $('#c-month').value = cal.month; return; } loadMonth(); say(''); });
   $('#c-grid').addEventListener('click', e => {
-    const b = e.target.closest('button[data-d]'); if (!b || !S.canEdit) return;
+    const b = e.target.closest('button[data-d]'); if (!b || !S.canEdit || partnerMode()) return;
     const d = +b.dataset.d, s = CAL.nextState(cal.days[d]);
     if (s) cal.days[d] = s; else delete cal.days[d];
     cal.dirty = true; paintGrid(); paintCalState(); drawCal();

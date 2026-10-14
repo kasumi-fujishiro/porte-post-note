@@ -73,7 +73,10 @@ function checkPhrases(rows, problems) {
 }
 function checkProducts(rows, problems) {
   const seen = new Set(), out = [];
+  // 予約サイトとつないでいるときは、予約サイトから写した商品だけを配る(商品の登録は予約サイトだけ)
+  const partner = rows.some(r => r.source === 'partner');
   rows.forEach(r => {
+    if (partner && r.source !== 'partner') return;
     const why = !r.id ? 'IDが空です'
       : seen.has(r.id) ? 'IDが重なっています'
         : !lenOk(r.name || '', 1, 30) ? '商品名を1〜30文字にしてください'
@@ -83,7 +86,8 @@ function checkProducts(rows, problems) {
     if (r.id) seen.add(r.id);
     if (why) { problems.push({ sheet: '商品', row: r.row, why }); return; }
     if (isTrue(r.hidden)) return;
-    out.push({ id: r.id, name: r.name, desc: r.desc || '', color: r.color, ex: isTrue(r.ex), order: +r.order || 0 });
+    // photo:お店の写真があるか(写真そのものは、公開窓口の ?api=photo から受けとる)
+    out.push({ id: r.id, name: r.name, desc: r.desc || '', color: r.color, ex: isTrue(r.ex), photo: !!r.imageUrl, order: +r.order || 0 });
   });
   return sortByOrder(out);
 }
@@ -117,6 +121,11 @@ function buildFeed(tables, generatedAt, auto) {
   const settings = readSettings(tables.settings || [], problems);
   const phrases = checkPhrases(tables.phrases || [], problems);
   const products = checkProducts(tables.products || [], problems);
+  // 予約サイトで新しく登録された新作のうち、まだ投稿を作っていないもの(スタッフの画面のベルに出す)
+  const ok = new Set(products.map(p => p.id));
+  const newPending = (tables.products || []).filter(r => r.source === 'partner' && r.newPost === '待ち' && r.imageUrl && ok.has(r.id)).map(r => ({ id: r.id, name: r.name }));
+  // 予約サイトで確認された営業カレンダーのうち、画像がまだないもの(合言葉の入ったスタッフの画面が、開いたときに描いて送る)
+  const calPending = typeof calImageNeeded === 'function' ? (tables.reservations || []).filter(calImageNeeded).map(r => ({ month: r.month, postTo: r.postTo === 'story' ? 'story' : 'feed' })) : [];
   const checked = checkCalendars(tables.calendars || [], problems), calendars = checked.calendars;
   const calendarState = typeof withPosted === 'function' ? withPosted(checked.calendarState, tables.reservations) : checked.calendarState;
   const version = settings.version;
@@ -124,7 +133,7 @@ function buildFeed(tables, generatedAt, auto) {
   const lastOkAt = settings.lastOkAt;
   delete settings.lastOkAt;
   return {
-    feed: { version, generatedAt, settings, phrases, products, calendars, calendarState, auto: { lastOkAt, alert: (auto && auto.alert) || null } },
+    feed: { version, generatedAt, settings, phrases, products, calendars, calendarState, auto: { lastOkAt, alert: (auto && auto.alert) || null }, newPending, calPending },
     problems
   };
 }

@@ -9,7 +9,9 @@ const SHEETS = {
   },
   products: {
     name: '商品', idCol: 'id',
-    cols: [['id', 'ID'], ['name', '商品名'], ['desc', '説明'], ['color', '色'], ['order', '並び順'], ['hidden', 'しまう'], ['ex', '例'], ['updatedAt', '更新日時']]
+    cols: [['id', 'ID'], ['name', '商品名'], ['desc', '説明'], ['color', '色'], ['order', '並び順'], ['hidden', 'しまう'], ['ex', '例'], ['updatedAt', '更新日時'],
+      // 予約サイトとの連携(10月14日に足した列)。source:'partner'=予約サイトから写したもの / 空=投稿ノートで登録したもの
+      ['source', '元'], ['imageUrl', '写真のURL'], ['category', 'カテゴリ'], ['newPost', '新作の投稿']]
   },
   calendars: {
     name: 'カレンダー', idCol: 'month',

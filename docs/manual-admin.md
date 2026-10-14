@@ -106,9 +106,13 @@ cd gas-admin && clasp create-deployment -i <ID> -d "管理ページ"
 | `SHEET_ID` | シートのID(`setupSheet` が入れる) | |
 | `DRIVE_FOLDER_ID` | 原本のフォルダのID(`setupSheet` が入れる) | |
 | `ALLOW_TEST_POSTS` | `yes` のときだけ、試しの関数が動く。**お店のアカウントに移す前に消す** | |
+| `SHOP_PASSCODE` | お店の合言葉。スタッフの画面から新作を投稿したり、営業カレンダーの画像を送ったりするときに使う。スタッフに口頭で伝える | **秘密** |
+| `PARTNER_FEED_URL` | 予約サイトの「読むだけの窓口」のURL。入れると、1時間ごとに商品とお休みを読む。空なら連携しない | |
+| `PARTNER_FEED_KEY` | 予約サイトの窓口の合言葉(予約サイトの人と同じ値) | **秘密** |
+| `PARTNER_IMAGE_ORIGIN` | 写真を読んでよいURLの頭(例:`https://(予約サイト)/img/products/`)。これ以外の写真は読まない | |
 | `TEST_BREAK_TOKEN` | 試しのとき、わざとトークンを使えなくする。値は**その日の日付**(`2026-10-11` の形)にする。その日だけ効き、次の日には効かなくなる。ふだんは入れない | |
 
-`LAST_OK_AT`、`TOKEN_BAD`、`IG_BLOCKED`(Instagramのアカウントが確認の画面で止められている)、`LAST_DAILY`、`TOKEN_CHECKED_AT`、`LOG_DAY`、`SENT_…`、`TEST_…` は、コードが自動で書きます。手で直さないでください(`SENT_…` を消すと、その知らせがもう一度送られます)。
+`LAST_OK_AT`、`TOKEN_BAD`、`PARTNER_FAILS`(予約サイトを続けて読めなかった回数)、`IG_BLOCKED`(Instagramのアカウントが確認の画面で止められている)、`LAST_DAILY`、`TOKEN_CHECKED_AT`、`LOG_DAY`、`SENT_…`、`TEST_…` は、コードが自動で書きます。手で直さないでください(`SENT_…` を消すと、その知らせがもう一度送られます)。
 
 あとから足したシートの列(予約の「種類」「名前」「投稿の文」「投稿する時」「商品ID」など)は、1時間ごとの自動実行が、表の右に自動で足します(動作記録に「列を足す」と出ます)。見出しが決まりとちがうときは足さないので、`setupSheet` を実行してください。
 
@@ -237,6 +241,7 @@ python3 -m http.server 8000
 | `testMakeReservationNow` | すぐに投稿の対象になる試しの予約を作る(10月14日から、新作の自動投稿と同じ形。画像は `posts/test-…`)。そのあと `hourlyJob` |
 | `testStuckPublishing` | 「投稿中」で止まった予約を作る。`hourlyJob` で「要確認」になり、投稿されない |
 | `TEST_BREAK_TOKEN` = 今日の日付 にしてから試しの予約 → `hourlyJob` | トークンが使えないときの知らせ。終わったら `TEST_BREAK_TOKEN` を消し、「もう一度出す」で投稿し直す |
+| `testPartnerMock` / `testPartnerOff` | 予約サイトの代わりに、試し用の窓口(`tests/partner-feed.json`)を読む/連携を止める |
 | `testStartWeek` / `testStopWeek` | 毎日11時台に試しの予約を作る(1週間の試し)/止める |
 
 **試しのあとの片づけ**

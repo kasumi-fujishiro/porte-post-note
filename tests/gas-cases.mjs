@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const ctx = vm.createContext({ console });
-for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js', 'NewPost.js', 'Post.js']) {
+for (const f of ['Schema.js', 'Validate.js', 'LogRules.js', 'Edit.js', 'Examples.js', 'Calendar.js', 'NewPost.js', 'Partner.js', 'Post.js']) {
   vm.runInContext(readFileSync(new URL(`../gas/core/${f}`, import.meta.url), 'utf8'), ctx, { filename: f });
 }
 const G = name => vm.runInContext(name, ctx);
@@ -189,6 +189,62 @@ export const gasCases = [
     eq(a([], true).kind, 'token');
     eq(a([], true, true).kind, 'account');
     eq(a([{ state: '失敗', tries: '3', month: 'TEST' }], false), null);
+  }],
+  // ---------- 予約サイトとの連携 ----------
+  ['連携:窓口の答えを検査する(IDがおかしい・重なる商品と、値段は使わない)', eq => {
+    const r = G('parsePartnerFeed')({ version: 1, products: [{ id: 'tart', name: 'タルト', description: 'りんご', category: 'cake', imageUrl: 'https://shop.example/img/products/a.jpg', price: 500 }, { id: 'Bad ID', name: 'x' }, { id: 'tart', name: '重なり' }],
+      shop: { regularHolidays: [3, 4] }, closedDays: [{ date: '2026-11-12', note: '臨時' }, { date: 'x' }], calendarConfirmations: [{ month: '2026-11', confirmedAt: '2026-10-21T10:00:00+09:00' }] });
+    eq(r.error, ''); eq(r.value.products.length, 1); eq('price' in r.value.products[0], false);
+    eq(JSON.stringify(r.value.regular), '[3,4]'); eq(r.value.closed.length, 1); eq(!!r.value.confirmations['2026-11'], true);
+    eq(!!G('parsePartnerFeed')({}).error, true);
+  }],
+  ['連携:写真は決めた相手のサイトのものだけ', eq => {
+    const a = G('allowedImage');
+    eq(a('https://shop.example/img/products/a.jpg', 'https://shop.example/'), true);
+    eq(a('https://evil.example/a.jpg', 'https://shop.example/'), false);
+    eq(a('https://shop.example/a.jpg', ''), false);
+  }],
+  ['連携:初めての読みこみは新作にしない。2回め以降、写真つきの新しい商品は「待ち」', eq => {
+    const plan = G('planProductSync'), o = 'https://shop.example/';
+    const list = [{ id: 'tart', name: 'タルト', desc: '', category: 'cake', imageUrl: o + 'a.jpg' }];
+    const first = plan([], list, true, o);
+    eq(first.add.length, 1); eq(first.add[0].newPost, ''); eq(first.newNames.length, 0); eq(first.add[0].color, 'pink');
+    const rows = [{ row: 2, id: 'tart', source: 'partner', name: 'タルト', desc: '', category: 'cake', imageUrl: o + 'a.jpg', order: '1', hidden: 'FALSE' }];
+    const next = plan(rows, list.concat([{ id: 'choco', name: 'ショコラ', desc: '濃厚', category: 'cake', imageUrl: o + 'b.jpg' }, { id: 'cookie', name: 'クッキー', desc: '', category: 'yakigashi', imageUrl: '' }]), false, o);
+    eq(next.add.length, 2); eq(next.add[0].newPost, '待ち'); eq(next.add[1].newPost, ''); eq(JSON.stringify(next.newNames), '["ショコラ"]'); eq(next.update.length, 0);
+    const gone = plan(rows, [], false, o);
+    eq(gone.update[0].values.hidden, 'TRUE');
+    const renamed = plan(rows, [{ id: 'tart', name: '秋のタルト', desc: '', category: 'cake', imageUrl: o + 'a.jpg' }], false, o);
+    eq(renamed.update[0].values.name, '秋のタルト'); eq(renamed.add.length, 0);
+  }],
+  ['連携:説明は60文字まで。定休日と臨時休業日からその月のお休みを作る', eq => {
+    eq(G('shortDesc')('あ'.repeat(70)).length, 60);
+    const d = G('partnerMonthDays')('2026-11', [3, 4], [{ date: '2026-11-12', note: '' }, { date: '2026-12-01', note: '' }]);
+    eq(d[4], 'c'); eq(d[5], 'c'); eq(d[12], 'c'); eq(d[1], undefined); eq(Object.keys(d).length, 8); // 12日は木曜日なので、定休日と重なる
+  }],
+  ['連携:予約サイトとつないでいるときは、予約サイトの商品だけを配り、待ちの新作を知らせる', eq => {
+    const rows = [{ row: 2, id: 'own1', name: '前の商品', desc: '', color: 'pink', hidden: 'FALSE' }, { row: 3, id: 'tart', source: 'partner', name: 'タルト', desc: '', color: 'pink', hidden: 'FALSE', imageUrl: 'https://shop.example/a.jpg', newPost: '待ち' }];
+    const f = G('buildFeed')({ settings: settingsRows(), phrases: [], products: rows, calendars: [], reservations: [] }, '', null).feed;
+    eq(f.products.length, 1); eq(f.products[0].id, 'tart'); eq(f.products[0].photo, true); eq(JSON.stringify(f.newPending), '[{"id":"tart","name":"タルト"}]');
+  }],
+  ['連携:予約サイトで確認された月だけ写す。お休みが変わったら作り直し、確認が消えたら取り消す', eq => {
+    const plan = G('partnerCalendarPlan'), feed = { regular: [3, 4], closed: [], confirmations: { '2026-12': '2026-11-21T10:00:00+09:00' } };
+    const p1 = plan([], feed, '2026-11');
+    eq(p1.confirm.length, 1); eq(p1.confirm[0].month, '2026-12'); eq(p1.unconfirm.length, 0);
+    const rows = [{ month: '2026-12', days: p1.confirm[0].daysText, state: '確認済み', confirmedBy: 'ポルテ予約サイト' }];
+    eq(plan(rows, feed, '2026-11').confirm.length, 0);
+    eq(plan(rows, { ...feed, closed: [{ date: '2026-12-01', note: '' }] }, '2026-11').confirm.length, 1);
+    eq(JSON.stringify(plan(rows, { ...feed, confirmations: {} }, '2026-11').unconfirm), '["2026-12"]');
+    eq(plan([{ month: '2026-12', state: '確認済み', confirmedBy: 'a@example.com' }], { ...feed, confirmations: {} }, '2026-11').unconfirm.length, 0);
+    eq(plan([], { ...feed, confirmations: { '2026-10': 'x' } }, '2026-11').confirm.length, 0);
+  }],
+  ['連携:画像がまだない営業カレンダーの予約を、配信データで知らせる', eq => {
+    const need = G('calImageNeeded');
+    eq(need({ month: '2026-12', state: '確認済み' }), true);
+    eq(need({ month: '2026-12', state: '確認済み', imageHash: 'ab' }), false);
+    eq(need({ month: 'TEST', state: '確認済み' }), false);
+    const f = G('buildFeed')({ settings: settingsRows(), phrases: [], products: [], calendars: [], reservations: [{ id: 'r', month: '2026-12', state: '確認済み', postTo: 'feed' }] }, '', null).feed;
+    eq(JSON.stringify(f.calPending), '[{"month":"2026-12","postTo":"feed"}]');
   }],
   // ---------- 新作の自動投稿 ----------
   ['新作:登録した時から、1時間以内の投稿の時を決める(9〜20時台の外は、次の9時台)', eq => {

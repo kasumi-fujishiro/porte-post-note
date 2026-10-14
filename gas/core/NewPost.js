@@ -37,6 +37,15 @@ function cleanSlot(input, now) {
   return { value: { postDate: date, postHour: hour }, error: '' };
 }
 
+// 投稿する時を、人に伝える言葉にする(「1時間以内」「明日の9時台」など)
+function slotWords(slot, now, chosen) {
+  const today = String(now).slice(0, 10), within = slot.postDate === today && +slot.postHour === +String(now).slice(11, 13);
+  if (within && !chosen) return '1時間以内';
+  if (slot.postDate === today) return `今日の${slot.postHour}時台`;
+  if (slot.postDate === nextDay(today)) return `明日の${slot.postHour}時台`;
+  return `${+slot.postDate.slice(5, 7)}月${+slot.postDate.slice(8)}日の${slot.postHour}時台`;
+}
+
 // 投稿の文(キャプション)。商品名と説明だけ。価格は入れない
 function captionForProduct(p) {
   return [p && p.name, p && p.desc].map(s => String(s || '').trim()).filter(Boolean).join('\n');
@@ -62,4 +71,4 @@ function resLabel(r) {
   return m ? `${+m[2]}月の営業カレンダー` : '試しの投稿';
 }
 
-if (typeof module !== 'undefined') module.exports = { NEW_HOURS, nextDay, inPostHours, newPostSlot, cleanSlot, captionForProduct, checkNewPost, newImagePath, resLabel };
+if (typeof module !== 'undefined') module.exports = { NEW_HOURS, nextDay, slotWords, inPostHours, newPostSlot, cleanSlot, captionForProduct, checkNewPost, newImagePath, resLabel };

@@ -32,6 +32,7 @@ function hourlyJob() {
   if (!lock.tryLock(30000)) { logRun_('自動実行', '見送り', 'ほかの実行が動いています'); return; }
   try {
     try { ensureColumns_(); } catch (e) { logRun_('列を足す', '失敗', e.message); }
+    try { syncPartner_(); } catch (e) { logRun_('予約サイトを読む', '失敗', e.message); }
     const settings = settingsMap_();
     // 「トークンが使えない」の印がついている間は、毎回トークンを試し、使えれば印を消す
     if (prop_('TOKEN_BAD', false) === 'yes' || prop_('IG_BLOCKED', false) === 'yes') {
@@ -165,11 +166,17 @@ function dailyChecks_(settings) {
   const key = Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM');
   const cal = readTable_('calendars').find(r => r.month === key);
   const kind = lineNoticeKind(now, { notice1: settings.notice1 || 20, notice2: settings.notice2 || 23 }, cal && cal.state === '確認済み' ? 'confirmed' : 'unconfirmed');
+  const m = +key.slice(5), partner = partnerOn_();
+  // 予約サイトとつないでいるときは、確認は予約サイトでしてもらう
+  const where = partner ? '予約サイトの「休業日」で、翌月のお休みを確認してください' : '確認してください';
   if (kind) {
-    const m = +key.slice(5);
     notifyOnce_(`${kind}:${key}`, kind === 'notice1'
-      ? `【投稿ノート】${m}月の営業日を確認してください。${+settings.postDay || 25}日の${settings.postHour || 12}時台に、Instagramに自動で投稿します。\n${appLink_()}`
-      : `【投稿ノート】${m}月の営業日が、まだ確認されていません。${+settings.postDay || 25}日までに確認してください。\n${appLink_()}`);
+      ? `【投稿ノート】${m}月の営業日を${partner ? '、' + where : '確認してください'}。${+settings.postDay || 25}日の${settings.postHour || 12}時台に、Instagramに自動で投稿します。\n${appLink_()}`
+      : `【投稿ノート】${m}月の営業日が、まだ確認されていません。${+settings.postDay || 25}日までに${partner ? where : '確認してください'}。\n${appLink_()}`);
+  }
+  // 確認はされたのに、まだだれもスタッフの画面を開いていない(画像がない)とき
+  if (partner && +today.slice(8) >= (+settings.notice2 || 23) && readTable_('reservations').some(r => r.month === key && calImageNeeded(r))) {
+    notifyOnce_(`calimage:${key}`, `【投稿ノート】${m}月の営業カレンダーの画像が、まだできていません。お店の合言葉を入れたスマホで、スタッフの画面を開いてください(開くだけで作ります)。\n${appLink_()}`);
   }
 
   // GitHubのトークンが切れる30日前

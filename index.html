@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Potta+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
-<link rel="stylesheet" href="css/style.css?v=19">
-<script type="module" src="js/app.js?v=19"></script>
+<link rel="stylesheet" href="css/style.css?v=20">
+<script type="module" src="js/app.js?v=20"></script>
 </head>
 <body>
 <div class="app">
@@ -38,6 +38,7 @@
   <section class="bell-panel" id="bellPanel" aria-labelledby="h-bell" hidden>
     <div class="bell-head"><h2 id="h-bell">お知らせ</h2><button type="button" class="small" id="bellClose" aria-label="お知らせを閉じる">×</button></div>
     <p class="hint" id="bellEmpty">お知らせはありません。</p>
+    <div class="stack" id="newPosts" hidden></div>
   <p class="warn" id="autoAlert" role="status" hidden></p>
 
   <div class="notice share" id="share" role="status" hidden>
@@ -50,6 +51,18 @@
     <p id="noticeText"></p>
     <div class="row"><button type="button" class="primary" id="noticeGo">営業日を確認する(お店の人用)</button></div>
   </div>
+  </section>
+
+  <!-- 予約サイトの新作を、ワンタップでフィードに投稿する画面(ベルのお知らせから開く) -->
+  <section class="bell-panel" id="npPanel" aria-labelledby="h-np" hidden>
+    <div class="bell-head"><h2 id="h-np">新作をInstagramに投稿</h2><button type="button" class="small" id="npClose" aria-label="閉じる">×</button></div>
+    <p class="hint" id="npLead"></p>
+    <div class="stage"><canvas id="npCv" width="1080" height="1350" aria-label="投稿する画像"></canvas></div>
+    <div class="field" id="npPosWrap" hidden><label for="npPos">写真の左右の位置</label><input type="range" id="npPos" min="0" max="100" value="50"></div>
+    <p class="hint">投稿の文:<br><b id="npCaption" style="white-space:pre-wrap"></b></p>
+    <div class="field" id="npPassBox" hidden><label for="npPass">お店の合言葉(このスマホでは、初めの1回だけ)</label><input type="password" id="npPass" autocomplete="off"></div>
+    <p class="status" id="npStatus" aria-live="polite"></p>
+    <div class="row"><button type="button" class="primary big" id="npGo">フィードに投稿する</button><button type="button" id="npCancel">やめる</button></div>
   </section>
 
   <!-- ===== つくる ===== -->
@@ -95,6 +108,7 @@
         <div class="field"><label for="f-product">商品</label><select id="f-product"></select></div>
         <div class="field"><label for="f-badge">ラベル</label>
           <select id="f-badge"><option>NEW</option><option>季節限定</option><option>本日のおすすめ</option><option value="">なし</option></select></div>
+        <div class="row" id="shopPhotoRow" hidden><button type="button" class="small" id="shopPhotoBtn">お店の写真を使う</button><span class="hint" id="shopPhotoState"></span></div>
       </div>
 
       <div class="stack" id="fs-cal" hidden>
@@ -141,6 +155,12 @@
       <div class="row"><button type="button" class="primary" id="adminOpen">登録・確認のページを開く</button></div>
       <p class="hint" id="adminSoon">お店の人用のページは準備中です。</p>
       <p class="hint" id="feedInfo"></p>
+    </section>
+    <section class="stack">
+      <h2>お店の合言葉(このスマホ)</h2>
+      <p class="hint">新作をInstagramに投稿したり、営業カレンダーの画像を作ったりするには、お店の合言葉が要ります。一度入れると、このスマホが覚えます。</p>
+      <div class="row"><input type="password" id="passInput" autocomplete="off" aria-label="お店の合言葉"><button type="button" id="passSave">覚えさせる</button><button type="button" class="small" id="passForget" hidden>忘れさせる</button></div>
+      <p class="status" id="passState" aria-live="polite"></p>
     </section>
     <section class="stack">
       <h2>作業時間の記録(このスマホの分)</h2>

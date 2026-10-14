@@ -1,13 +1,14 @@
 // スタッフの画面の動き。ひとこと・商品・お店の設定は、GASの公開窓口から受け取る配信データ(端末に保存した写し)で動く。
-import { FORMATS, KINDS } from './data.js?v=19';
-import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=19';
-import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=19';
-import { chooseLayout, applyLayout } from './layout.js?v=19';
-import { WEEK, iso, pad2, dateLabel } from './text.js?v=19';
-import { monthInfo, noticeFor } from './calendar.js?v=19';
-import { CONFIG } from '../config.js?v=19';
-import { ls, photoStore } from './store.js?v=19';
-import { draw, cropAxis } from './draw.js?v=19';
+import { FORMATS, KINDS } from './data.js?v=20';
+import { cachedFeed, fallbackFeed, fetchFeed } from './feed.js?v=20';
+import { enqueueLog, flushLogs, pendingLogs } from './logqueue.js?v=20';
+import { chooseLayout, applyLayout } from './layout.js?v=20';
+import { WEEK, iso, pad2, dateLabel } from './text.js?v=20';
+import { monthInfo, noticeFor } from './calendar.js?v=20';
+import { CONFIG } from '../config.js?v=20';
+import { ls, photoStore } from './store.js?v=20';
+import { draw, cropAxis } from './draw.js?v=20';
+import { setupNewPost } from './newpost.js?v=20';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -224,7 +225,7 @@ function paintAuto() {
 }
 // ---------- お知らせのベル ----------
 // 出ているお知らせのうち、まだベルを開いて見ていないものがあれば、赤い点をつける(見たかどうかは、スマホごと)
-const BELL_ITEMS = ['#autoAlert', '#share', '#notice'];
+const BELL_ITEMS = ['#newPosts', '#autoAlert', '#share', '#notice'];
 const bellKeys = () => BELL_ITEMS.map(sel => $(sel)).filter(el => !el.hidden).map(el => `${el.id}:${el.textContent.replace(/\s+/g, ' ').trim().slice(0, 80)}`);
 function paintBell() {
   const keys = bellKeys(), seen = ls.get('pn-bell-seen', []);
@@ -242,6 +243,10 @@ $('#bellClose').addEventListener('click', () => openBell(false));
 $('#bellBack').addEventListener('click', () => openBell(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#bellPanel').hidden) openBell(false); });
 
+// 予約サイトの新作のワンタップ投稿と、営業カレンダーの画像づくり(js/newpost.js)
+const np = setupNewPost({ data: () => data, loadImage, ensureFonts, refresh: () => refreshFeed(), openBell, paintBell });
+$('#shopPhotoBtn').addEventListener('click', () => { const p = product(); if (p) np.useShopPhoto(p.id, blob => pickPhoto(blob)); });
+
 $('#noticeGo').addEventListener('click', () => { if (CONFIG.adminUrl) location.href = `${CONFIG.adminUrl}?tab=calendar&month=${$('#notice').dataset.key}`; });
 
 // ---------- 画像を描く ----------
@@ -249,7 +254,7 @@ const cv = $('#cv');
 // 駐車場は、お店で決めた画像を使う
 const parkImg = new Image();
 parkImg.onload = () => changed();
-parkImg.src = 'images/parking.jpg?v=19';
+parkImg.src = 'images/parking.jpg?v=20';
 function drawState() {
   return {
     kind: radio('kind'), photo, photoPos: +$('#photoPos').value, theme: data.settings.theme, hours: data.settings.hours || '',
@@ -359,6 +364,7 @@ function syncKind() {
   ['open', 'new', 'park', 'cal'].forEach(n => { $('#fs-' + n).hidden = n !== k; });
   $('#photoBox').hidden = k === 'park' || k === 'cal';
   paintPhotoPos();
+  const sp = product(); $('#shopPhotoRow').hidden = !(k === 'new' && sp && sp.photo);
 }
 // 写真の位置のバー:写真が切れる向き(左右か上下)に合わせて出す。どこも切れないときは出さない
 let lastAxis = '';
@@ -406,7 +412,7 @@ async function refreshFeed() {
   const [f, state] = await fetchFeed(data);
   // お店の設定で画面の形が変わっていたら、まだ作りはじめていなければ、読み込み直して新しい形にする
   if (f && chooseLayout(f.settings.layout) !== layout && !t0) { location.reload(); return; }
-  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); paintBell(); saveDraft(); changed(); }
+  if (f) { data = f; paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); np.paint(); paintBell(); saveDraft(); changed(); }
   paintFeedInfo(state);
 }
 addEventListener('online', () => { flushLogs().then(() => paintFeedInfo()); refreshFeed(); });
@@ -415,7 +421,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { re
 // 電波がないときのために、画面のファイルを端末に保存する
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); paintBell(); paintLog(); paintFeedInfo();
+paintPhrases(); paintProducts(); paintCalendars(); syncKind(); updateNotice(); paintAuto(); paintShare(); np.paint(); paintBell(); paintLog(); paintFeedInfo();
 
 // ---------- 画面の形(L:今の形 S:1画面ずつ A:できあがり中心 C:よく使う組み合わせ) ----------
 const layout = chooseLayout(data.settings.layout);

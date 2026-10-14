@@ -1,9 +1,9 @@
 // 配信データ(ひとこと、商品、お店の設定、確認ずみのカレンダー)を受け取る。
 // 正しいデータはスプレッドシート。ここにあるのは、版番号つきの写し。
 // 開いたらまず端末に保存した写しですぐ動き、裏で新しい版を確かめる。
-import { CONFIG } from '../config.js?v=19';
-import { ls } from './store.js?v=19';
-import { PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=19';
+import { CONFIG } from '../config.js?v=20';
+import { ls } from './store.js?v=20';
+import { PHRASES, PRODUCTS, DEFAULT_SETTINGS } from './data.js?v=20';
 
 const KEY = 'pn-feed';
 const valid = f => !!(f && typeof f === 'object' && Number.isInteger(f.version) && f.settings
