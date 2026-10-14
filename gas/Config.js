@@ -9,9 +9,12 @@ function prop_(key, required) {
   return v || '';
 }
 
+// 空の値は、書かずに行ごと消す(GASの設定欄の画面は、値が空の行があると保存できないため)
 function setProp_(key, value) {
   if (SECRET_KEYS.includes(key)) throw new Error('秘密の情報は、コードから書きこみません。');
-  PropertiesService.getScriptProperties().setProperty(key, value);
+  const props = PropertiesService.getScriptProperties();
+  if (value == null || String(value) === '') props.deleteProperty(key);
+  else props.setProperty(key, String(value));
 }
 
 // URLの頭の部分(例:https://kasumi-fujishiro.github.io/porte-post-note/)。最後は必ず「/」
