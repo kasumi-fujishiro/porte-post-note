@@ -3,11 +3,11 @@
 // ・予約サイトで確認された営業カレンダーの画像を、開いたときに裏で描いて送る(合言葉を覚えているスマホだけ)
 // ・「新作・季節」で、お店の写真(予約サイトの商品写真)を使う
 // 写真は、公開窓口(GAS)が予約サイトから読んで渡す(ほかのサイトの画像を直接描くと、保存できなくなるため)。
-import { FORMATS } from './data.js?v=20';
-import { draw, cropAxis } from './draw.js?v=20';
-import { monthInfo } from './calendar.js?v=20';
-import { CONFIG } from '../config.js?v=20';
-import { ls } from './store.js?v=20';
+import { FORMATS } from './data.js?v=21';
+import { draw, cropAxis } from './draw.js?v=21';
+import { monthInfo } from './calendar.js?v=21';
+import { CONFIG } from '../config.js?v=21';
+import { ls } from './store.js?v=21';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

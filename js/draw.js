@@ -1,7 +1,7 @@
 // 画像を描く処理(試作版の drawOpen / drawNew / drawPark / drawCal / brush / ink / block を整理したもの)。
 // 画面の部品には触らず、渡された内容 s だけを見て描く。
-import { THEMES, SEASONS } from './data.js?v=20';
-import { WEEK, layout } from './text.js?v=20';
+import { THEMES, SEASONS } from './data.js?v=21';
+import { WEEK, layout } from './text.js?v=21';
 
 export const F_TITLE = '"Potta One","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
 export const F_HAND = '"Yusei Magic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif';
@@ -302,6 +302,9 @@ function cover(c, W, H, photo, pos) {
   }
   const iw = photo.naturalWidth || photo.width, ih = photo.naturalHeight || photo.height, sc = Math.max(W / iw, H / ih), sw = W / sc, sh = H / sc;
   const axis = cropAxis(photo, W, H), p = pos / 100;
+  // 背景を切り抜いた写真(透明なところのあるPNG)は、透明なところがJPEGで黒くなるので、先に地の色を塗る
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#F3E7D8'); g.addColorStop(1, '#D9C3AB');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
   c.drawImage(photo, (iw - sw) * (axis === 'x' ? p : 0.5), (ih - sh) * (axis === 'y' ? p : 0.5), sw, sh, 0, 0, W, H);
 }
 // 写真の上下に、うすい影のグラデーション

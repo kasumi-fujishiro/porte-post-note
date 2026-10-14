@@ -32,12 +32,16 @@ function syncPartner_() {
     return;
   }
   const rows = readTable_('products'), now = nowText_();
-  const first = !rows.some(r => r.source === PARTNER_SOURCE);
+  // 初めての読みこみ(読む先のURLが変わったときも):今ある商品を「知っている商品」にするだけで、新作にしない。
+  // 試し用の窓口から本物に切りかえたとき、本物の商品が全部新作として知らされないように
+  const url = prop_('PARTNER_FEED_URL');
+  const first = !rows.some(r => r.source === PARTNER_SOURCE) || prop_('PARTNER_SYNCED_URL', false) !== url;
   const plan = planProductSync(rows, feed.products, first, prop_('PARTNER_IMAGE_ORIGIN', false));
   plan.update.forEach(u => setCells_('products', u.row, Object.assign({ updatedAt: now }, u.values)));
   if (plan.add.length) appendRows_('products', plan.add.map(a => Object.assign({ updatedAt: now }, a)));
   const calChanged = syncPartnerCalendar_(feed);
   if (plan.add.length || plan.update.length || calChanged) bumpVersion_();
+  setProp_('PARTNER_SYNCED_URL', url);
   logRun_('予約サイトを読む', '成功', `商品${feed.products.length}件(足した${plan.add.length}・直した${plan.update.length})${first ? '。初めての読みこみなので、新作にはしていません' : ''}`);
   if (plan.newNames.length) {
     notifyOnce_(`newprod:${today}:${plan.newNames.join('/')}`, `【投稿ノート】予約サイトに新作「${plan.newNames.join('」「')}」が登録されました。スタッフの画面を開くと、右上のベルからInstagramのフィードに投稿できます。\n${appLink_()}`);

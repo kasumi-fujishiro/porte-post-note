@@ -222,6 +222,14 @@ export const gasCases = [
     const d = G('partnerMonthDays')('2026-11', [3, 4], [{ date: '2026-11-12', note: '' }, { date: '2026-12-01', note: '' }]);
     eq(d[4], 'c'); eq(d[5], 'c'); eq(d[12], 'c'); eq(d[1], undefined); eq(Object.keys(d).length, 8); // 12日は木曜日なので、定休日と重なる
   }],
+  ['連携:closedAll(祝日は営業も入ったお休み)があれば、それを使う。始まりの日より前は定休日の曜日で決める', eq => {
+    const d = G('partnerMonthDays')('2026-11', [3, 4], [], ['2026-11-04', '2026-11-05', '2026-11-12'], '2026-10-14');
+    eq(JSON.stringify(Object.keys(d)), '["4","5","12"]'); // 11日・18日などは closedAll にないので営業(例:祝日は営業)
+    const part = G('partnerMonthDays')('2026-10', [3, 4], [], ['2026-10-15', '2026-10-21'], '2026-10-14');
+    eq(part[1], 'c'); eq(part[8], 'c'); eq(part[15], 'c'); eq(part[22], undefined); eq(part[21], 'c');
+    const r = G('parsePartnerFeed')({ products: [], generatedAt: '2026-10-14T20:38:54+09:00', closedAll: ['2026-11-04', 'x'], shop: { regularHolidays: [3, 4], holidaysOpen: true } });
+    eq(JSON.stringify(r.value.closedAll), '["2026-11-04"]'); eq(r.value.from, '2026-10-14');
+  }],
   ['連携:予約サイトとつないでいるときは、予約サイトの商品だけを配り、待ちの新作を知らせる', eq => {
     const rows = [{ row: 2, id: 'own1', name: '前の商品', desc: '', color: 'pink', hidden: 'FALSE' }, { row: 3, id: 'tart', source: 'partner', name: 'タルト', desc: '', color: 'pink', hidden: 'FALSE', imageUrl: 'https://shop.example/a.jpg', newPost: '待ち' }];
     const f = G('buildFeed')({ settings: settingsRows(), phrases: [], products: rows, calendars: [], reservations: [] }, '', null).feed;

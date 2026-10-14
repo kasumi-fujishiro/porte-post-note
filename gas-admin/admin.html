@@ -247,10 +247,10 @@
 
 <script type="module">
 const APP = '<?= appUrl ?>', START_TAB = '<?= startTab ?>', START_MONTH = '<?= startMonth ?>';
-const { draw, cropAxis } = await import(APP + 'js/draw.js?v=20');
-const { FORMATS } = await import(APP + 'js/data.js?v=20');
-const CAL = await import(APP + 'js/calendar.js?v=20');
-const { CONFIG } = await import(APP + 'config.js?v=20');
+const { draw, cropAxis } = await import(APP + 'js/draw.js?v=21');
+const { FORMATS } = await import(APP + 'js/data.js?v=21');
+const CAL = await import(APP + 'js/calendar.js?v=21');
+const { CONFIG } = await import(APP + 'config.js?v=21');
 {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

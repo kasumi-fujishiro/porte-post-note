@@ -31,7 +31,10 @@ function parsePartnerFeed(data) {
   (Array.isArray(data.calendarConfirmations) ? data.calendarConfirmations : []).forEach(c => {
     if (c && /^\d{4}-\d{2}$/.test(c.month || '') && c.confirmedAt) confirmations[c.month] = String(c.confirmedAt);
   });
-  return { value: { version: +data.version || 0, products, regular, hours: cleanText(shop.hours), closed, confirmations }, error: '' };
+  // closedAll:定休日(祝日は営業)と臨時休業を合わせたお休み(予約サイトが今日〜再来月の末を出す)。あればこれを使う
+  const closedAll = Array.isArray(data.closedAll) ? data.closedAll.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)) : null;
+  const from = /^\d{4}-\d{2}-\d{2}/.test(data.generatedAt || '') ? String(data.generatedAt).slice(0, 10) : '';
+  return { value: { version: +data.version || 0, products, regular, hours: cleanText(shop.hours), closed, closedAll, from, confirmations }, error: '' };
 }
 
 // 写真のURLが、決めた相手のサイトのものか(ほかのサイトの画像は読まない)
@@ -79,10 +82,20 @@ function planProductSync(rows, list, first, origin) {
   return { add, update, newNames };
 }
 
-// 相手の定休日と臨時休業日から、その月のお休み({ 日: 'c' })を作る
-function partnerMonthDays(month, regular, closed) {
+// 相手の定休日と臨時休業日から、その月のお休み({ 日: 'c' })を作る。
+// closedAll(祝日は営業も入った、お休みの日の一覧)があれば、それを使う。ただし from(一覧の始まりの日)より前の日は、定休日の曜日で決める
+function partnerMonthDays(month, regular, closed, closedAll, from) {
   const y = +month.slice(0, 4), m = +month.slice(5, 7), days = {};
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const two = n => String(n).padStart(2, '0');
+  if (Array.isArray(closedAll)) {
+    const all = new Set(closedAll);
+    for (let d = 1; d <= last; d++) {
+      const date = `${month}-${two(d)}`, w = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+      if (from && date < from ? (regular || []).includes(w) : all.has(date)) days[d] = 'c';
+    }
+    return days;
+  }
   for (let d = 1; d <= last; d++) {
     const w = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
     if ((regular || []).includes(w)) days[d] = 'c';
@@ -100,7 +113,7 @@ function partnerCalendarPlan(rows, feed, thisMonth) {
   rows.forEach(r => { byMonth[r.month] = r; });
   Object.keys(feed.confirmations).sort().forEach(month => {
     if (month < thisMonth) return;
-    const daysText = daysToText(partnerMonthDays(month, feed.regular, feed.closed));
+    const daysText = daysToText(partnerMonthDays(month, feed.regular, feed.closed, feed.closedAll, feed.from));
     const r = byMonth[month];
     // まだ写していない、お休みが変わった、確認されていない、のどれかなら、写して予約を作り直す
     if (!r || r.days !== daysText || r.state !== '確認済み' || r.confirmedBy !== PARTNER_BY) confirm.push({ month, daysText });
